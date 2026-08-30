@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 
-const TEAM_COLORS = [new THREE.Color(0x22d3ee), new THREE.Color(0xff4f87)];
-const TEAM_NAMES = ['CIANO', 'CORAL'];
+// A mesma dupla de cores alimenta tinta, traçante, clarão e todos os HUDs.
+const TEAM_COLORS = [new THREE.Color(0x188cff), new THREE.Color(0xff3f9f)];
+const TEAM_NAMES = ['AZUL', 'ROSA'];
 const SPLAT_LIMIT = 900;
 const GRID_SIZE = 84;
 const Z_AXIS = new THREE.Vector3(0, 0, 1);
@@ -14,6 +15,7 @@ export class InkSystem {
     this.halfMap = mapSize / 2;
     this.isPlayerLocked = isPlayerLocked;
     this.teamIndex = 0;
+    this.teamListeners = new Set();
     this.nextSplat = 0;
     this.grid = new Uint8Array(GRID_SIZE * GRID_SIZE);
     this.teamCells = [0, 0];
@@ -45,9 +47,10 @@ export class InkSystem {
     this.splats.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     scene.add(this.splats);
 
-    this.percentEls = [document.getElementById('cyan-percent'), document.getElementById('coral-percent')];
-    this.barEls = [document.getElementById('cyan-bar'), document.getElementById('coral-bar')];
+    this.percentEls = [document.getElementById('blue-percent'), document.getElementById('pink-percent')];
+    this.barEls = [document.getElementById('blue-bar'), document.getElementById('pink-bar')];
     this.activeTeamEl = document.getElementById('active-team');
+    this.teamNameEl = document.getElementById('team-name');
 
     document.addEventListener('keydown', (event) => {
       if (event.code === 'KeyT' && !event.repeat && this.isPlayerLocked()) this.setTeam(1 - this.teamIndex);
@@ -60,10 +63,20 @@ export class InkSystem {
     return TEAM_COLORS[this.teamIndex];
   }
 
+  onTeamChange(listener) {
+    this.teamListeners.add(listener);
+    listener(this.getActiveColor(), TEAM_NAMES[this.teamIndex], this.teamIndex);
+    return () => this.teamListeners.delete(listener);
+  }
+
   setTeam(index) {
     this.teamIndex = Math.abs(index) % TEAM_COLORS.length;
     document.body.dataset.team = String(this.teamIndex);
-    if (this.activeTeamEl) this.activeTeamEl.textContent = `TINTA ${TEAM_NAMES[this.teamIndex]}`;
+    if (this.activeTeamEl) this.activeTeamEl.textContent = `TIME ${TEAM_NAMES[this.teamIndex]}`;
+    if (this.teamNameEl) this.teamNameEl.textContent = TEAM_NAMES[this.teamIndex];
+    for (const listener of this.teamListeners) {
+      listener(this.getActiveColor(), TEAM_NAMES[this.teamIndex], this.teamIndex);
+    }
   }
 
   isOwnInkAt(x, z) {

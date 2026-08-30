@@ -63,15 +63,31 @@ function addMuzzle(group, position) {
   return anchor;
 }
 
-function capsuleBetween(group, start, end, radius, meshMaterial) {
+function addInkIndicator(group) {
+  const indicatorMaterial = new THREE.MeshStandardMaterial({
+    color: 0x188cff,
+    emissive: 0x188cff,
+    emissiveIntensity: 0.32,
+    roughness: 0.3,
+    metalness: 0.08,
+    flatShading: true,
+  });
+  const indicator = addMesh(
+    group,
+    new THREE.BoxGeometry(0.07, 0.13, 0.07),
+    indicatorMaterial,
+    [0.115, 0.015, -0.12],
+    [0.12, 0, 0],
+  );
+  indicator.name = 'reservatorio-tinta-do-time';
+  indicator.renderOrder = 22;
+  group.userData.inkIndicator = indicator;
+}
+
+function blockBetween(group, start, end, width, depth, meshMaterial) {
   const direction = new THREE.Vector3().subVectors(end, start);
   const distance = direction.length();
-  const geometry = new THREE.CapsuleGeometry(
-    radius,
-    Math.max(0.015, distance - radius * 2),
-    5,
-    10,
-  );
+  const geometry = new THREE.BoxGeometry(width, Math.max(0.02, distance), depth);
   const mesh = new THREE.Mesh(geometry, meshMaterial);
   mesh.position.copy(start).add(end).multiplyScalar(0.5);
   mesh.quaternion.setFromUnitVectors(UP, direction.normalize());
@@ -86,37 +102,28 @@ function createArm(side, gripConfig, palette) {
   const arm = new THREE.Group();
   arm.name = side === 'left' ? 'braco-esquerdo' : 'braco-direito';
 
-  const sleeve = material(palette.manga ?? '#27313b', { roughness: 0.92, metalness: 0.02 });
-  const glove = material(palette.luva ?? '#11161b', { roughness: 0.8, metalness: 0.08 });
+  const sleeve = material(palette.manga ?? '#343a40', { roughness: 0.96, metalness: 0.01 });
+  const cuff = material(palette.punho ?? '#f3f4f6', { roughness: 0.9, metalness: 0 });
+  const skin = material(palette.pele ?? '#a96542', { roughness: 0.88, metalness: 0 });
   const shoulder = new THREE.Vector3(...gripConfig.ombro);
   const elbow = new THREE.Vector3(...gripConfig.cotovelo);
   const hand = new THREE.Vector3(...gripConfig.mao);
-  const wrist = elbow.clone().lerp(hand, 0.82);
+  const cuffStart = elbow.clone().lerp(hand, 0.7);
+  const wrist = elbow.clone().lerp(hand, 0.88);
 
-  capsuleBetween(arm, shoulder, elbow, 0.068, sleeve);
-  capsuleBetween(arm, elbow, wrist, 0.057, sleeve);
-  capsuleBetween(arm, wrist, hand, 0.052, glove);
+  // Silhueta em blocos inspirada em FPS low-poly, criada especificamente para o JOgo.
+  blockBetween(arm, shoulder, elbow, 0.15, 0.145, sleeve);
+  blockBetween(arm, elbow, cuffStart, 0.135, 0.13, sleeve);
+  blockBetween(arm, cuffStart, wrist, 0.145, 0.14, cuff);
 
   const palm = addMesh(
     arm,
-    new THREE.CapsuleGeometry(0.052, 0.065, 5, 10),
-    glove,
+    new THREE.BoxGeometry(0.125, 0.105, 0.16),
+    skin,
     hand.toArray(),
     gripConfig.rotacaoMao ?? [Math.PI / 2, 0, 0],
   );
   palm.name = `${arm.name}-mao`;
-
-  const fingerOffset = side === 'left' ? -0.034 : 0.034;
-  for (let finger = 0; finger < 3; finger++) {
-    const fingerMesh = addMesh(
-      arm,
-      new THREE.CapsuleGeometry(0.013, 0.042, 4, 8),
-      glove,
-      [hand.x + fingerOffset, hand.y - 0.008 + finger * 0.018, hand.z - 0.014],
-      [Math.PI / 2, 0, 0],
-    );
-    fingerMesh.name = `${arm.name}-dedo-${finger + 1}`;
-  }
 
   arm.userData.basePosition = arm.position.clone();
   arm.userData.baseRotation = arm.rotation.clone();
@@ -308,6 +315,8 @@ export class WeaponSystem {
     this.hitmarkerEl = document.getElementById('hitmarker');
     this.crosshairEl = document.getElementById('crosshair');
 
+    this.inkSystem?.onTeamChange((color) => this._applyTeamColor(color));
+
     this._setupEvents();
   }
 
@@ -330,6 +339,7 @@ export class WeaponSystem {
       this.root.add(model);
       return model;
     }));
+    this._applyTeamColor(this.inkSystem?.getActiveColor());
 
     this._renderSlots();
     this.select(0, true);
@@ -340,6 +350,7 @@ export class WeaponSystem {
     const config = weapon.modelo3D;
     if (!config?.arquivo) {
       const fallback = createFallbackModel(weapon);
+      addInkIndicator(fallback);
       addFirstPersonArms(fallback, config);
       registerAnimatedParts(fallback);
       return fallback;
@@ -367,6 +378,7 @@ export class WeaponSystem {
       model.add(visual);
       model.userData.weaponVisual = visual;
       addMuzzle(model, config.muzzle ?? [0, 0, -0.8]);
+      addInkIndicator(model);
       addFirstPersonArms(model, config);
       registerAnimatedParts(model);
       model.userData.asset = {
@@ -380,6 +392,7 @@ export class WeaponSystem {
     } catch (error) {
       console.warn(`Falha ao carregar ${config.arquivo}; usando modelo reserva.`, error);
       const fallback = createFallbackModel(weapon);
+      addInkIndicator(fallback);
       addFirstPersonArms(fallback, config);
       registerAnimatedParts(fallback);
       fallback.userData.asset = { formato: 'procedural-fallback' };
@@ -675,6 +688,18 @@ export class WeaponSystem {
     if (killed) this.hitmarkerEl.classList.add('kill');
     clearTimeout(this.hitmarkerTimer);
     this.hitmarkerTimer = setTimeout(() => this.hitmarkerEl.classList.remove('show', 'kill'), 120);
+  }
+
+  _applyTeamColor(color) {
+    if (!color) return;
+    for (const model of this.models) {
+      const indicatorMaterial = model.userData.inkIndicator?.material;
+      if (indicatorMaterial) {
+        indicatorMaterial.color.copy(color);
+        indicatorMaterial.emissive.copy(color);
+      }
+      if (model.userData.flash?.material) model.userData.flash.material.color.copy(color);
+    }
   }
 
   _updateHud() {

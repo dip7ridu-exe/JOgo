@@ -33,7 +33,7 @@ Depois acesse `http://localhost:8000`. Para publicar no GitHub Pages, use
 | Espaço | Pular; use após o slide para manter o impulso |
 | Shift | Correr |
 | Ctrl ou C | Deslizar; na própria tinta ativa o impulso de tinta |
-| T | Alternar Ciano/Coral para testar a retomada de território |
+| T | Alternar Time Azul/Time Rosa para testar a retomada de território |
 | Esc | Liberar o mouse |
 
 ## Mecânicas implementadas
@@ -73,10 +73,16 @@ depender de outro servidor.
 | 4 | Canhão Onda | Sete projéteis | Área espalhada |
 | 5 | Blaster Prisma | Lento e preciso | Mancha grande |
 
-Os braços e as mãos enluvadas são montados em Three.js. O view model anima
-entrada, respiração, caminhada, corrida, slide, recuo, ação da arma, recarga e
-movimento das mãos. Se um GLB não carregar, existe um modelo procedural de
-reserva para a partida continuar.
+Os braços são modelos procedurais originais montados em blocos low-poly, com
+manga escura, punho branco e mãos estilizadas. O view model anima entrada,
+respiração, caminhada, corrida, slide, recuo, ação da arma, recarga e movimento
+das mãos. Se um GLB não carregar, existe um modelo procedural de reserva para a
+partida continuar.
+
+O HUD inferior esquerdo usa a linguagem visual pixelada dos FPS de navegador:
+avatar, nome do Time Azul ou Time Rosa, seis blocos de vida e indicador 100. A
+interface, o reservatório visível na arma, o clarão, o traçante e as manchas de
+tinta mudam juntos para azul (`#188cff`) ou rosa (`#ff3f9f`).
 
 ## Otimização para navegador
 

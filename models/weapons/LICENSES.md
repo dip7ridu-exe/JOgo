@@ -23,5 +23,6 @@ Os cinco GLBs foram copiados do pacote oficial. A textura `colormap.png` foi
 incorporada em cada arquivo para que o jogo carregue modelos autocontidos no
 GitHub Pages sem requisições extras ou dependência de outro servidor.
 
-Os nomes das armas no jogo, pontos `muzzle`, braços, mãos enluvadas e animações
-de primeira pessoa foram criados para o JOgo e não fazem parte do pacote.
+Os nomes das armas no jogo, pontos `muzzle`, reservatórios de tinta, braços
+low-poly em blocos e animações de primeira pessoa foram criados para o JOgo e
+não fazem parte do pacote.
