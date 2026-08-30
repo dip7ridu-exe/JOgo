@@ -54,14 +54,37 @@ export class PlayerController {
 
   _setupEvents() {
     const overlay = document.getElementById('overlay');
+    const overlayMessage = document.getElementById('overlay-message');
 
-    const lock = () => this.domElement.requestPointerLock();
+    const lock = () => {
+      if (document.pointerLockElement === this.domElement) return;
+
+      try {
+        const request = this.domElement.requestPointerLock();
+        if (request && typeof request.catch === 'function') {
+          request.catch(() => {
+            if (overlayMessage) overlayMessage.textContent = 'O navegador bloqueou o mouse. Clique novamente para tentar.';
+          });
+        }
+      } catch (error) {
+        console.error('Pointer Lock indisponível:', error);
+        if (overlayMessage) overlayMessage.textContent = 'Não foi possível capturar o mouse neste navegador.';
+      }
+    };
     this.domElement.addEventListener('click', lock);
     if (overlay) overlay.addEventListener('click', lock);
 
     document.addEventListener('pointerlockchange', () => {
       this.locked = document.pointerLockElement === this.domElement;
       if (overlay) overlay.style.display = this.locked ? 'none' : 'flex';
+      if (!this.locked) {
+        this.keys = {};
+        if (overlayMessage) overlayMessage.textContent = 'Clique em qualquer lugar para voltar ao teste';
+      }
+    });
+
+    document.addEventListener('pointerlockerror', () => {
+      if (overlayMessage) overlayMessage.textContent = 'O navegador não permitiu travar o mouse. Clique novamente.';
     });
 
     document.addEventListener('mousemove', (e) => {
@@ -72,11 +95,17 @@ export class PlayerController {
       this.pitchObject.rotation.x = Math.max(-limit, Math.min(limit, this.pitchObject.rotation.x));
     });
 
-    document.addEventListener('keydown', (e) => { this.keys[e.code] = true; });
+    document.addEventListener('keydown', (e) => {
+      this.keys[e.code] = true;
+      if (['Space', 'ControlLeft', 'ControlRight'].includes(e.code)) e.preventDefault();
+    });
     document.addEventListener('keyup', (e) => { this.keys[e.code] = false; });
+    window.addEventListener('blur', () => { this.keys = {}; });
   }
 
   update(delta) {
+    if (!this.locked) return;
+
     const keys = this.keys;
     const crouching = !!(keys['ControlLeft'] || keys['ControlRight'] || keys['KeyC']);
     const wantsSprint = !!(keys['ShiftLeft'] || keys['ShiftRight']);

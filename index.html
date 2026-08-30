@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mapa de Teste — FPS</title>
+  <meta name="description" content="Protótipo de FPS 3D com cinco armas low-poly, alvos e movimentação em primeira pessoa." />
+  <title>JOgo — Campo de Teste FPS</title>
   <link rel="stylesheet" href="style.css" />
   <script type="importmap">
   {
@@ -16,24 +17,43 @@
 <body>
   <canvas id="game"></canvas>
 
-  <div id="crosshair"></div>
-  <div id="fps">0 FPS</div>
+  <div id="crosshair" aria-hidden="true"></div>
+  <div id="hitmarker" aria-hidden="true"></div>
+
+  <div id="top-hud">
+    <div id="fps">0 FPS</div>
+    <div id="score">ALVOS 0</div>
+  </div>
+
+  <div id="weapon-hud" aria-live="polite">
+    <div id="weapon-name">CARREGANDO...</div>
+    <div id="weapon-category"></div>
+    <div id="ammo"><strong>--</strong><span>/ ∞</span></div>
+    <div id="reload-status"></div>
+  </div>
+
+  <div id="weapon-slots" aria-label="Armas disponíveis"></div>
 
   <div id="overlay">
     <div id="overlay-box">
-      <h1>Mapa de Teste</h1>
-      <p>Clique em qualquer lugar para travar o mouse e jogar</p>
+      <span class="eyebrow">JOgo // PROTÓTIPO FPS</span>
+      <h1>Campo de Teste</h1>
+      <p id="overlay-message">Clique em qualquer lugar para entrar no teste</p>
       <ul>
         <li><b>W A S D</b> — mover</li>
         <li><b>Mouse</b> — olhar em volta</li>
+        <li><b>Botão esquerdo</b> — atirar</li>
+        <li><b>1–5 / Scroll</b> — trocar arma</li>
+        <li><b>R</b> — recarregar</li>
         <li><b>Espaço</b> — pular</li>
         <li><b>Shift</b> — correr</li>
         <li><b>Ctrl</b> — agachar</li>
         <li><b>Esc</b> — soltar o mouse</li>
       </ul>
+      <span class="start-hint">CLIQUE PARA JOGAR</span>
     </div>
   </div>
 
-  <script type="module" src="js/main.js"></script>
+  <script type="module" src="main.js"></script>
 </body>
 </html>

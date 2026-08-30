@@ -1,69 +1,106 @@
 {
-  "_sobre": "Base de dados inicial de armas, com nomes originais (não copiados de nenhum jogo). Ainda não está conectada ao jogo — é o ponto de partida para quando os modelos 3D forem importados. 'modeloSugerido' aponta para pacotes gratuitos (CC0) com modelos parecidos.",
+  "_sobre": "Cinco armas de teste conectadas ao jogo. Os modelos low-poly atuais são gerados localmente por weapons.js e não dependem de assets externos. Os campos modeloSugerido indicam pacotes CC0 para uma futura troca por arquivos GLB.",
   "armas": [
     {
       "id": "pistola_pt9",
       "nome": "PT-9",
       "categoria": "pistola",
-      "dano": 26,
-      "cadenciaTiro": 7.5,
+      "dano": 34,
+      "cadenciaTiro": 5,
       "capacidadeCarregador": 12,
-      "tempoRecarga": 1.4,
+      "tempoRecarga": 1.35,
       "velocidadeBala": 900,
-      "modeloSugerido": "Kenney - Blaster Kit / Quaternius - 50+ LowPoly Guns"
+      "automatico": false,
+      "recuo": 0.07,
+      "dispersao": 0.005,
+      "cores": {
+        "principal": "#59636f",
+        "metal": "#20262c",
+        "empunhadura": "#171b20",
+        "detalhe": "#f5a142"
+      },
+      "modeloSugerido": "Kenney — Blaster Kit (CC0)"
     },
     {
       "id": "smg_vk5",
       "nome": "VK-5",
       "categoria": "submetralhadora",
-      "dano": 18,
-      "cadenciaTiro": 13,
+      "dano": 19,
+      "cadenciaTiro": 12.5,
       "capacidadeCarregador": 30,
-      "tempoRecarga": 1.9,
+      "tempoRecarga": 1.8,
       "velocidadeBala": 800,
-      "modeloSugerido": "Quaternius - 50+ LowPoly Guns"
+      "automatico": true,
+      "recuo": 0.035,
+      "dispersao": 0.012,
+      "cores": {
+        "principal": "#283b45",
+        "metal": "#12191f",
+        "empunhadura": "#18242b",
+        "detalhe": "#36d6b0"
+      },
+      "modeloSugerido": "Quaternius — Ultimate Guns Pack (CC0)"
     },
     {
       "id": "rifle_ar7",
       "nome": "AR-7",
       "categoria": "rifle_de_assalto",
       "dano": 32,
-      "cadenciaTiro": 10,
+      "cadenciaTiro": 9.5,
       "capacidadeCarregador": 30,
-      "tempoRecarga": 2.2,
+      "tempoRecarga": 2.15,
       "velocidadeBala": 950,
-      "modeloSugerido": "itch.io CC0 - 'Free Low Poly Weapons Pack Vol.3' (Delthor Games)"
+      "automatico": true,
+      "recuo": 0.052,
+      "dispersao": 0.008,
+      "cores": {
+        "principal": "#4b5144",
+        "metal": "#1d221d",
+        "empunhadura": "#242b22",
+        "detalhe": "#d0a84b"
+      },
+      "modeloSugerido": "Quaternius — Ultimate Guns Pack (CC0)"
     },
     {
       "id": "shotgun_sg2",
       "nome": "SG-2",
       "categoria": "espingarda",
-      "dano": 90,
-      "cadenciaTiro": 1.1,
+      "dano": 104,
+      "cadenciaTiro": 1.15,
       "capacidadeCarregador": 6,
-      "tempoRecarga": 2.8,
+      "tempoRecarga": 2.7,
       "velocidadeBala": 700,
-      "modeloSugerido": "itch.io CC0 - 'CC0 Flat Guns West' (Pichuliru)"
+      "automatico": false,
+      "recuo": 0.2,
+      "dispersao": 0.075,
+      "projeteisPorTiro": 8,
+      "cores": {
+        "principal": "#493527",
+        "metal": "#20252a",
+        "empunhadura": "#5d3520",
+        "detalhe": "#b8733f"
+      },
+      "modeloSugerido": "Quaternius — Ultimate Guns Pack (CC0)"
     },
     {
       "id": "sniper_rk1",
       "nome": "RK-1",
       "categoria": "sniper",
-      "dano": 120,
-      "cadenciaTiro": 0.9,
+      "dano": 125,
+      "cadenciaTiro": 0.85,
       "capacidadeCarregador": 5,
-      "tempoRecarga": 3.0,
+      "tempoRecarga": 2.9,
       "velocidadeBala": 1400,
-      "modeloSugerido": "itch.io CC0 - 'Sniper Set' (vkss)"
-    },
-    {
-      "id": "faca_padrao",
-      "nome": "Faca",
-      "categoria": "corpo_a_corpo",
-      "dano": 55,
-      "cadenciaTiro": 2.0,
-      "alcance": 1.6,
-      "modeloSugerido": "itch.io CC0 - 'Low Poly Simple Melee Weapon Pack' (Joe345)"
+      "automatico": false,
+      "recuo": 0.22,
+      "dispersao": 0.001,
+      "cores": {
+        "principal": "#34424a",
+        "metal": "#151b20",
+        "empunhadura": "#25343c",
+        "detalhe": "#45a9cf"
+      },
+      "modeloSugerido": "Quaternius — Ultimate Guns Pack (CC0)"
     }
   ]
 }
