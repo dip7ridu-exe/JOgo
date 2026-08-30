@@ -1,31 +1,30 @@
 # Licenças dos modelos de armas
 
-## Kenney — Blaster Kit 2.1
+## 3dmodelscc0 — Free CC0 Guns & Explosives Pack
 
-- **Autor e distribuidor:** Kenney
-- **Pacote:** Blaster Kit 2.1
-- **Fonte oficial:** https://kenney.nl/assets/blaster-kit
-- **Licença:** Creative Commons Zero 1.0 Universal (CC0 1.0)
-- **Texto da licença:** https://creativecommons.org/publicdomain/zero/1.0/
-- **Data indicada no pacote:** 31-07-2025
+- **Autor e distribuidor:** 3dmodelscc0
+- **Pacote:** Free CC0 Guns & Explosives Pack
+- **Fonte oficial:** https://3dmodelscc0.itch.io/free-cc0-guns-explosives-pack
+- **Arquivo original:** `Guns&Explosives.rar`, publicado em 30-10-2023
+- **Licença declarada pelo autor:** Creative Commons Zero (CC0 / domínio público)
+- **Texto da licença CC0:** https://creativecommons.org/publicdomain/zero/1.0/
 - **Uso permitido:** pessoal, educacional e comercial
-- **Crédito:** não é obrigatório; crédito a `Kenney` ou `www.kenney.nl` é apreciado
+- **Crédito:** não é obrigatório pela CC0; o projeto registra a autoria por transparência
 
 | Arquivo local | Uso no JOgo | Origem no pacote |
 |---|---|---|
-| `blaster-a.glb` | PT-9 (pistola) | `Models/GLB format/blaster-a.glb` |
-| `blaster-d.glb` | VK-5 (submetralhadora) | `Models/GLB format/blaster-d.glb` |
-| `blaster-g.glb` | AR-7 (rifle de assalto) | `Models/GLB format/blaster-g.glb` |
-| `blaster-l.glb` | SG-2 (espingarda) | `Models/GLB format/blaster-l.glb` |
-| `blaster-e.glb` | RK-1 (sniper) | `Models/GLB format/blaster-e.glb` |
+| `makarov.glb` | Makarov (pistola) | `Guns&Explosives/Pistol_MK/Makarov.fbx` |
+| `grease-gun.glb` | Grease Gun M3 (submetralhadora) | `Guns&Explosives/GreaseGun/Grease_Gun.fbx` |
+| `m4a1.glb` | M4A1 (rifle de assalto) | `Guns&Explosives/M4A1/M4A1.fbx` |
+| `shotgun.glb` | Shotgun (espingarda) | `Guns&Explosives/Shotgun/Shotgun.fbx` |
+| `sniper.glb` | Sniper Rifle | `Guns&Explosives/Sniper/Sniper.fbx` |
 
-Os modelos foram reempacotados como GLB autocontidos, incorporando a textura
-`colormap.png` fornecida no próprio pacote. Geometria, textura e autoria não
-foram alteradas. A posição do ponto `muzzle`, a escala e a rotação usadas pelo
-jogo ficam registradas em `weapons.json`.
+Os FBX originais foram convertidos para glTF Binary (`.glb`). Cada GLB incorpora
+as texturas de cor, normal, rugosidade e metal fornecidas com a arma. Rugosidade
+e metal foram empacotados nos canais exigidos pelo padrão glTF; normal maps com
+orientação DirectX tiveram o canal verde convertido para OpenGL. As texturas
+foram redimensionadas de 2048×2048 para 1024×1024 para melhorar o carregamento
+no navegador.
 
-Trecho informativo do arquivo `License.txt` incluído no download oficial:
-
-> Blaster Kit (2.1), created/distributed by Kenney. License: Creative Commons
-> Zero (CC0). You can use this content for personal, educational, and commercial
-> purposes.
+Os braços, mãos enluvadas, pontos `muzzle` e animações de primeira pessoa foram
+criados em código para o JOgo e não fazem parte do pacote original.

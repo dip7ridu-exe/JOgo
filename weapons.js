@@ -4,6 +4,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const BASE_POSITION = new THREE.Vector3(0.34, -0.29, -0.48);
 const BASE_ROTATION = new THREE.Euler(-0.045, -0.055, -0.015);
 const CENTER = new THREE.Vector2(0, 0);
+const UP = new THREE.Vector3(0, 1, 0);
 
 function material(color, options = {}) {
   return new THREE.MeshStandardMaterial({
@@ -60,6 +61,105 @@ function addMuzzle(group, position) {
   group.userData.muzzle = anchor;
   group.userData.flash = flash;
   return anchor;
+}
+
+function capsuleBetween(group, start, end, radius, meshMaterial) {
+  const direction = new THREE.Vector3().subVectors(end, start);
+  const distance = direction.length();
+  const geometry = new THREE.CapsuleGeometry(
+    radius,
+    Math.max(0.015, distance - radius * 2),
+    5,
+    10,
+  );
+  const mesh = new THREE.Mesh(geometry, meshMaterial);
+  mesh.position.copy(start).add(end).multiplyScalar(0.5);
+  mesh.quaternion.setFromUnitVectors(UP, direction.normalize());
+  mesh.castShadow = false;
+  mesh.frustumCulled = false;
+  mesh.renderOrder = 21;
+  group.add(mesh);
+  return mesh;
+}
+
+function createArm(side, gripConfig, palette) {
+  const arm = new THREE.Group();
+  arm.name = side === 'left' ? 'braco-esquerdo' : 'braco-direito';
+
+  const sleeve = material(palette.manga ?? '#27313b', { roughness: 0.92, metalness: 0.02 });
+  const glove = material(palette.luva ?? '#11161b', { roughness: 0.8, metalness: 0.08 });
+  const shoulder = new THREE.Vector3(...gripConfig.ombro);
+  const elbow = new THREE.Vector3(...gripConfig.cotovelo);
+  const hand = new THREE.Vector3(...gripConfig.mao);
+  const wrist = elbow.clone().lerp(hand, 0.82);
+
+  capsuleBetween(arm, shoulder, elbow, 0.068, sleeve);
+  capsuleBetween(arm, elbow, wrist, 0.057, sleeve);
+  capsuleBetween(arm, wrist, hand, 0.052, glove);
+
+  const palm = addMesh(
+    arm,
+    new THREE.CapsuleGeometry(0.052, 0.065, 5, 10),
+    glove,
+    hand.toArray(),
+    gripConfig.rotacaoMao ?? [Math.PI / 2, 0, 0],
+  );
+  palm.name = `${arm.name}-mao`;
+
+  const fingerOffset = side === 'left' ? -0.034 : 0.034;
+  for (let finger = 0; finger < 3; finger++) {
+    const fingerMesh = addMesh(
+      arm,
+      new THREE.CapsuleGeometry(0.013, 0.042, 4, 8),
+      glove,
+      [hand.x + fingerOffset, hand.y - 0.008 + finger * 0.018, hand.z - 0.014],
+      [Math.PI / 2, 0, 0],
+    );
+    fingerMesh.name = `${arm.name}-dedo-${finger + 1}`;
+  }
+
+  arm.userData.basePosition = arm.position.clone();
+  arm.userData.baseRotation = arm.rotation.clone();
+  return arm;
+}
+
+function addFirstPersonArms(model, config = {}) {
+  const defaultGrips = {
+    direita: {
+      ombro: [0.48, -0.43, 0.2],
+      cotovelo: [0.3, -0.34, 0.12],
+      mao: [0.03, -0.1, 0.03],
+      rotacaoMao: [Math.PI / 2, 0, 0],
+    },
+    esquerda: {
+      ombro: [-0.4, -0.43, 0.17],
+      cotovelo: [-0.24, -0.31, 0.04],
+      mao: [-0.035, -0.06, -0.27],
+      rotacaoMao: [Math.PI / 2, 0, 0],
+    },
+  };
+  const grips = config.bracos ?? defaultGrips;
+  const palette = config.aparenciaBracos ?? {};
+  const armature = new THREE.Group();
+  armature.name = 'bracos-primeira-pessoa';
+  const rightArm = createArm('right', grips.direita ?? defaultGrips.direita, palette);
+  const leftArm = createArm('left', grips.esquerda ?? defaultGrips.esquerda, palette);
+  armature.add(rightArm, leftArm);
+  model.add(armature);
+  model.userData.arms = { armature, rightArm, leftArm };
+}
+
+function registerAnimatedParts(model) {
+  const magazine = model.getObjectByName('Magazine');
+  const action = model.getObjectByName('Slide')
+    ?? model.getObjectByName('Bolt')
+    ?? model.getObjectByName('Fore_Stock')
+    ?? model.getObjectByName('Charging_Handle');
+
+  model.userData.animatedParts = {
+    magazine: magazine ? { object: magazine, base: magazine.position.clone() } : null,
+    action: action ? { object: action, base: action.position.clone() } : null,
+  };
 }
 
 function createPistol(colors) {
@@ -174,9 +274,13 @@ export class WeaponSystem {
     this.currentIndex = 0;
     this.cooldown = 0;
     this.reloadRemaining = 0;
+    this.reloadDuration = 0;
     this.fireHeld = false;
     this.recoil = 0;
+    this.fireAnimation = 0;
+    this.equipProgress = 1;
     this.bobTime = 0;
+    this.idleTime = 0;
     this.score = 0;
     this.flashRemaining = 0;
 
@@ -227,7 +331,12 @@ export class WeaponSystem {
 
   async _loadModel(weapon) {
     const config = weapon.modelo3D;
-    if (!config?.arquivo) return createFallbackModel(weapon);
+    if (!config?.arquivo) {
+      const fallback = createFallbackModel(weapon);
+      addFirstPersonArms(fallback, config);
+      registerAnimatedParts(fallback);
+      return fallback;
+    }
 
     try {
       const gltf = await this.loader.loadAsync(config.arquivo);
@@ -250,17 +359,21 @@ export class WeaponSystem {
 
       model.add(visual);
       addMuzzle(model, config.muzzle ?? [0, 0, -0.8]);
+      addFirstPersonArms(model, config);
+      registerAnimatedParts(model);
       model.userData.asset = {
         formato: 'glb',
         arquivo: config.arquivo,
-        autor: 'Kenney',
-        licenca: 'CC0 1.0',
+        autor: config.autor ?? '3dmodelscc0',
+        licenca: config.licenca ?? 'CC0 1.0',
       };
       model.visible = false;
       return model;
     } catch (error) {
       console.warn(`Falha ao carregar ${config.arquivo}; usando modelo reserva.`, error);
       const fallback = createFallbackModel(weapon);
+      addFirstPersonArms(fallback, config);
+      registerAnimatedParts(fallback);
       fallback.userData.asset = { formato: 'procedural-fallback' };
       return fallback;
     }
@@ -323,9 +436,26 @@ export class WeaponSystem {
     this.flashRemaining = 0;
     this.currentIndex = index;
     this.reloadRemaining = 0;
+    this.reloadDuration = 0;
     this.fireHeld = false;
     this.cooldown = immediate ? 0 : 0.16;
     this.recoil = immediate ? 0 : 0.12;
+    this.fireAnimation = 0;
+    this.equipProgress = immediate ? 1 : 0;
+
+    const activeModel = this.models[index];
+    const parts = activeModel.userData.animatedParts;
+    if (parts?.magazine) parts.magazine.object.position.copy(parts.magazine.base);
+    if (parts?.action) parts.action.object.position.copy(parts.action.base);
+    const { leftArm, rightArm } = activeModel.userData.arms ?? {};
+    if (leftArm) {
+      leftArm.position.copy(leftArm.userData.basePosition);
+      leftArm.rotation.copy(leftArm.userData.baseRotation);
+    }
+    if (rightArm) {
+      rightArm.position.copy(rightArm.userData.basePosition);
+      rightArm.rotation.copy(rightArm.userData.baseRotation);
+    }
 
     for (const slot of this.slotsEl.children) {
       slot.classList.toggle('active', Number(slot.dataset.index) === index);
@@ -340,6 +470,7 @@ export class WeaponSystem {
 
     this.fireHeld = false;
     this.reloadRemaining = weapon.tempoRecarga;
+    this.reloadDuration = weapon.tempoRecarga;
     this.reloadEl.textContent = `RECARREGANDO ${this.reloadRemaining.toFixed(1)}s`;
   }
 
@@ -347,6 +478,9 @@ export class WeaponSystem {
     if (this.weapons.length === 0) return;
 
     this.cooldown = Math.max(0, this.cooldown - delta);
+    this.idleTime += delta;
+    this.equipProgress = Math.min(1, this.equipProgress + delta * 4.5);
+    this.fireAnimation = Math.max(0, this.fireAnimation - delta * 11);
 
     if (this.reloadRemaining > 0) {
       this.reloadRemaining -= delta;
@@ -354,6 +488,7 @@ export class WeaponSystem {
         const weapon = this.weapons[this.currentIndex];
         this.ammo[this.currentIndex] = weapon.capacidadeCarregador;
         this.reloadRemaining = 0;
+        this.reloadDuration = 0;
         this.reloadEl.textContent = '';
         this._updateHud();
       } else {
@@ -363,6 +498,42 @@ export class WeaponSystem {
 
     const weapon = this.weapons[this.currentIndex];
     if (this.fireHeld && weapon.automatico && this.reloadRemaining <= 0) this._tryFire();
+
+    const reloadProgress = this.reloadRemaining > 0 && this.reloadDuration > 0
+      ? 1 - this.reloadRemaining / this.reloadDuration
+      : 0;
+    const reloadArc = Math.sin(reloadProgress * Math.PI);
+    const magazineArc = reloadProgress > 0.14 && reloadProgress < 0.76
+      ? Math.sin(((reloadProgress - 0.14) / 0.62) * Math.PI)
+      : 0;
+    const equipEase = 1 - Math.pow(1 - this.equipProgress, 3);
+    const model = this.models[this.currentIndex];
+    const parts = model.userData.animatedParts;
+    if (parts?.magazine) {
+      parts.magazine.object.position.copy(parts.magazine.base);
+      parts.magazine.object.position.y -= magazineArc * 0.105;
+    }
+    if (parts?.action) {
+      parts.action.object.position.copy(parts.action.base);
+      parts.action.object.position.z += this.fireAnimation * 0.032;
+    }
+
+    const { leftArm, rightArm } = model.userData.arms ?? {};
+    if (leftArm) {
+      leftArm.position.copy(leftArm.userData.basePosition);
+      leftArm.position.x -= magazineArc * 0.055;
+      leftArm.position.y -= magazineArc * 0.12;
+      leftArm.position.z += magazineArc * 0.075;
+      leftArm.rotation.copy(leftArm.userData.baseRotation);
+      leftArm.rotation.x += reloadArc * 0.18;
+      leftArm.rotation.z += reloadArc * 0.38;
+    }
+    if (rightArm) {
+      rightArm.position.copy(rightArm.userData.basePosition);
+      rightArm.position.z += this.fireAnimation * 0.012;
+      rightArm.rotation.copy(rightArm.userData.baseRotation);
+      rightArm.rotation.x -= this.fireAnimation * 0.035;
+    }
 
     if (this.flashRemaining > 0) {
       this.flashRemaining -= delta;
@@ -375,17 +546,32 @@ export class WeaponSystem {
     const bobStrength = moving && player.onGround ? (sprinting ? 0.018 : 0.009) : 0;
     const bobX = Math.cos(this.bobTime) * bobStrength;
     const bobY = Math.abs(Math.sin(this.bobTime)) * bobStrength;
+    const breatheY = Math.sin(this.idleTime * 1.7) * 0.0035;
 
     this.recoil = THREE.MathUtils.lerp(this.recoil, 0, Math.min(1, delta * 13));
     const sprintDrop = sprinting ? 0.09 : 0;
-    const targetX = BASE_POSITION.x + bobX;
-    const targetY = BASE_POSITION.y - bobY - sprintDrop;
+    const equipDrop = (1 - equipEase) * 0.34;
+    const targetX = BASE_POSITION.x + bobX + reloadArc * 0.055;
+    const targetY = BASE_POSITION.y - bobY - sprintDrop + breatheY - equipDrop - reloadArc * 0.09;
     const targetZ = BASE_POSITION.z + this.recoil + (sprinting ? 0.04 : 0);
     this.root.position.x = THREE.MathUtils.lerp(this.root.position.x, targetX, Math.min(1, delta * 14));
     this.root.position.y = THREE.MathUtils.lerp(this.root.position.y, targetY, Math.min(1, delta * 14));
     this.root.position.z = THREE.MathUtils.lerp(this.root.position.z, targetZ, Math.min(1, delta * 18));
-    this.root.rotation.x = THREE.MathUtils.lerp(this.root.rotation.x, BASE_ROTATION.x - this.recoil * 0.42, Math.min(1, delta * 18));
-    this.root.rotation.z = THREE.MathUtils.lerp(this.root.rotation.z, BASE_ROTATION.z + bobX * 0.8, Math.min(1, delta * 12));
+    this.root.rotation.x = THREE.MathUtils.lerp(
+      this.root.rotation.x,
+      BASE_ROTATION.x - this.recoil * 0.42 + reloadArc * 0.16,
+      Math.min(1, delta * 18),
+    );
+    this.root.rotation.y = THREE.MathUtils.lerp(
+      this.root.rotation.y,
+      BASE_ROTATION.y + (1 - equipEase) * 0.48 + reloadArc * 0.12,
+      Math.min(1, delta * 15),
+    );
+    this.root.rotation.z = THREE.MathUtils.lerp(
+      this.root.rotation.z,
+      BASE_ROTATION.z + bobX * 0.8 - (1 - equipEase) * 0.38 - reloadArc * 0.28,
+      Math.min(1, delta * 12),
+    );
   }
 
   _tryFire() {
@@ -400,6 +586,7 @@ export class WeaponSystem {
     this.ammo[this.currentIndex]--;
     this.cooldown = 1 / weapon.cadenciaTiro;
     this.recoil = Math.min(0.24, this.recoil + (weapon.recuo ?? 0.07));
+    this.fireAnimation = 1;
 
     const model = this.models[this.currentIndex];
     model.userData.flash.visible = true;

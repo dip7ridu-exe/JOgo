@@ -2,7 +2,8 @@
 
 Protótipo de jogo de tiro em primeira pessoa para navegador, feito com
 **Three.js** e sem etapa de build. O projeto já possui movimentação, colisão,
-cinco armas low-poly, disparo por raycast, recarga, troca de arma, alvos e HUD.
+cinco armas convencionais, braços em primeira pessoa, animações, disparo por
+raycast, recarga, troca de arma, alvos e HUD.
 
 ## Como jogar
 
@@ -36,23 +37,29 @@ Também funciona no GitHub Pages: em **Settings → Pages**, escolha
 
 ## Armas incluídas
 
-Os cinco modelos atuais vêm do **Kenney Blaster Kit 2.1**, são carregados como
-`.glb` pelo `GLTFLoader` e usam licença CC0. Os arquivos estão dentro do próprio
-projeto, então o jogo não baixa modelos de serviços externos durante a partida.
+Os cinco modelos atuais vêm do **Free CC0 Guns & Explosives Pack**, de
+**3dmodelscc0**. Os FBX originais foram convertidos para `.glb` autocontido,
+carregados pelo `GLTFLoader` e mantêm a licença CC0 declarada pelo autor. O jogo
+não baixa modelos de serviços externos durante a partida.
 
 | Tecla | Arma | Tipo | Modelo GLB | Funcionamento |
 |---|---|---|---|---|
-| 1 | PT-9 | Pistola | `blaster-a.glb` | Semiautomática |
-| 2 | VK-5 | Submetralhadora | `blaster-d.glb` | Automática |
-| 3 | AR-7 | Rifle de assalto | `blaster-g.glb` | Automático |
-| 4 | SG-2 | Espingarda | `blaster-l.glb` | 8 projéteis por disparo |
-| 5 | RK-1 | Sniper | `blaster-e.glb` | Alto dano e alta precisão |
+| 1 | Makarov | Pistola | `makarov.glb` | Semiautomática |
+| 2 | Grease Gun M3 | Submetralhadora | `grease-gun.glb` | Automática |
+| 3 | M4A1 | Rifle de assalto | `m4a1.glb` | Automático |
+| 4 | Shotgun | Espingarda | `shotgun.glb` | 8 projéteis por disparo |
+| 5 | Sniper Rifle | Sniper | `sniper.glb` | Alto dano e alta precisão |
 
 Dano, cadência, munição, recarga, recuo, dispersão, caminho do modelo, escala,
 posição, rotação e ponto `muzzle` ficam centralizados em `weapons.json`. O
 carregamento e o sistema de tiro ficam em `weapons.js`. Caso algum GLB falhe ao
 carregar, o jogo mantém um modelo procedural de reserva para não interromper a
 partida.
+
+Os braços e as mãos enluvadas são construídos em Three.js e possuem pontos de
+empunhadura diferentes para cada arma. O view model anima a entrada da arma,
+respiração, caminhada/corrida, recuo, peça móvel, saída do carregador e movimento
+da mão durante a recarga.
 
 ## Estrutura
 
@@ -67,11 +74,11 @@ JOgo/
 ├── weapons.json     # atributos e ajuste visual das cinco armas
 └── models/
     └── weapons/
-        ├── blaster-a.glb
-        ├── blaster-d.glb
-        ├── blaster-e.glb
-        ├── blaster-g.glb
-        ├── blaster-l.glb
+        ├── makarov.glb
+        ├── grease-gun.glb
+        ├── m4a1.glb
+        ├── shotgun.glb
+        ├── sniper.glb
         └── LICENSES.md
 ```
 
@@ -80,6 +87,8 @@ JOgo/
 Para adicionar outros arquivos `.glb`, prefira pacotes com licença clara e
 guarde a licença junto dos assets.
 
+- [3dmodelscc0 — Free CC0 Guns & Explosives Pack](https://3dmodelscc0.itch.io/free-cc0-guns-explosives-pack):
+  19 armas e explosivos em FBX, licença CC0; é o pacote usado nesta versão.
 - [Kenney — Blaster Kit](https://kenney.nl/assets/blaster-kit): 40 arquivos 3D,
   licença CC0.
 - [Quaternius — Ultimate Guns Pack](https://quaternius.com/packs/ultimategun.html):
@@ -99,7 +108,8 @@ licença para reutilizar os assets em outro jogo.
 
 ### Integração `.glb` implementada
 
-1. Os assets permitidos estão em `models/weapons/` como GLBs autocontidos.
+1. Os assets permitidos estão em `models/weapons/` como GLBs autocontidos com
+   texturas PBR em 1024×1024.
 2. O `index.html` mapeia `three` e `three/addons/` para a mesma versão `0.169.0`.
 3. O `WeaponSystem` usa `GLTFLoader.loadAsync()` e prende cada `gltf.scene` ao
    view model da câmera.
