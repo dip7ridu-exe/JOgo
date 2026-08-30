@@ -5,9 +5,10 @@ Protótipo de jogo de tiro em primeira pessoa para navegador, feito com
 arena com uma disputa de território pintado por duas equipes.
 
 Esta versão inclui movimento por aceleração e impulso, corrida normal e tática,
-controle aéreo, slide-hop, áudio procedural, mapa urbano original, cinco
-blasters Kenney, braços em primeira pessoa, tiro por raycast, tinta em
-chão/paredes/caixas, placar de cobertura, alvos e HUD.
+controle aéreo, slide-hop, mira ADS, recarga animada em etapas, áudio
+procedural, mapa urbano original, cinco blasters Kenney, braços em primeira
+pessoa, tiro por raycast, tinta em chão/paredes/caixas, placar de cobertura,
+alvos e HUD de arsenal.
 
 ## Executar
 
@@ -29,6 +30,7 @@ Depois acesse `http://localhost:8000`. Para publicar no GitHub Pages, use
 | W A S D | Mover |
 | Mouse | Olhar |
 | Botão esquerdo | Atirar tinta |
+| Botão direito (segurar) | Mirar; centraliza a arma, reduz FOV/sensibilidade e melhora a precisão |
 | 1–5 ou roda do mouse | Trocar blaster |
 | R | Reabastecer o tanque |
 | Espaço | Pular; use após o slide para manter o impulso |
@@ -53,6 +55,12 @@ tática de 3,15 segundos. Ela é mais veloz que a corrida comum, eleva a arma,
 acelera o balanço do view model e tem recuperação de 4,25 segundos. Atirar,
 recarregar ou deslizar encerra o estado para evitar que as ações se sobreponham.
 
+Segurar o botão direito ativa a mira ADS. A transição centraliza a arma, reduz
+o campo de visão para 62°, estabiliza o balanço e diminui a sensibilidade do
+mouse. Mirar interrompe a corrida tática e bloqueia a corrida comum enquanto o
+botão estiver pressionado. A dispersão cai progressivamente com a animação; o
+canhão mantém parte de seu espalhamento para preservar sua função.
+
 Agachar sobre tinta da equipe ativa libera um impulso adicional. Isso é uma
 adaptação simples da mobilidade por tinta para o protótipo FPS; ainda não há
 transformação de personagem nem multiplayer.
@@ -73,8 +81,8 @@ grade usa apenas um colisor simples.
 
 `audio.js` usa um único `AudioContext`, osciladores, filtros e um pequeno buffer
 de ruído gerado no carregamento. Há variações para passos de caminhada, corrida
-e corrida tática, aterrissagem, tiro por categoria de arma, impacto, recarga e
-carregador vazio. O contexto só é liberado depois do primeiro clique/tecla,
+e corrida tática, aterrissagem, tiro por categoria de arma, impacto, recarga em
+três etapas e carregador vazio. O contexto só é liberado depois do primeiro clique/tecla,
 seguindo a política de autoplay dos navegadores.
 
 Nenhum som do Freesound ou OpenGameArt foi copiado. Esses catálogos misturam
@@ -107,14 +115,20 @@ depender de outro servidor.
 
 Os braços são modelos procedurais originais montados em blocos low-poly, com
 manga escura, punho branco e mãos estilizadas. O view model anima entrada,
-respiração, caminhada, corrida, slide, recuo, ação da arma, recarga e movimento
-das mãos. Se um GLB não carregar, existe um modelo procedural de reserva para a
-partida continuar.
+respiração, caminhada, corrida, slide, recuo, ação da arma, mira e movimento das
+mãos. A recarga inclina a arma para expor o tanque, aproxima a mão esquerda,
+retira o reservatório, move-o lateralmente e o encaixa de volta. Se um GLB não
+carregar, existe um modelo procedural de reserva para a partida continuar.
 
 O HUD inferior esquerdo usa a linguagem visual pixelada dos FPS de navegador:
 avatar, nome do Time Azul ou Time Rosa, seis blocos de vida e indicador 100. A
 interface, o reservatório visível na arma, o clarão, o traçante e as manchas de
 tinta mudam juntos para azul (`#188cff`) ou rosa (`#ff3f9f`).
+
+O seletor de armas agora é um painel vertical à direita, com silhuetas vetoriais
+originais, categoria, tecla, barra de munição e destaque da arma ativa. O cartão
+inferior mostra tanque, modo livre, mira, recarga ou corrida tática sem cobrir o
+centro da tela; em celular, a lista é ocultada e o cartão é reduzido.
 
 ## Otimização para navegador
 
@@ -177,8 +191,9 @@ JOgo/
   futura animação corporal completa. Nenhum arquivo desses serviços foi
   redistribuído nesta versão.
 - Os modelos de braços/armas indicados no Sketchfab foram usados apenas como
-  referência visual. O jogo mantém os braços procedurais originais e os cinco
-  blasters CC0 já documentados em `models/weapons/LICENSES.md`.
+  referência visual para as poses de POV, mira e recarga. O modelo AK74U não foi
+  incorporado: o jogo mantém os braços procedurais originais e os cinco blasters
+  CC0 já documentados em `models/weapons/LICENSES.md`.
 - [Awwwards — Three.js](https://www.awwwards.com/websites/three-js/) serve como
   referência visual de interface e apresentação, não de física.
 - O repositório [PunishXIV/Splatoon](https://github.com/PunishXIV/Splatoon) é um

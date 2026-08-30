@@ -155,11 +155,21 @@ export class GameAudio {
     this._tone({ start: now, duration: 0.035, frequency: 850, endFrequency: 420, gain: 0.045, type: 'square' });
   }
 
-  playReload() {
+  playReload(stage = 0) {
     if (!this._ready()) return;
     const now = this.context.currentTime;
-    this._noiseBurst({ start: now, duration: 0.035, gain: 0.035, frequency: 1800, q: 2.2, type: 'bandpass' });
-    this._tone({ start: now + 0.075, duration: 0.055, frequency: 540, endFrequency: 280, gain: 0.035, type: 'square' });
+    if (stage === 0) {
+      this._noiseBurst({ start: now, duration: 0.04, gain: 0.035, frequency: 1750, q: 2.2, type: 'bandpass' });
+      this._tone({ start: now + 0.045, duration: 0.05, frequency: 610, endFrequency: 310, gain: 0.032, type: 'square' });
+      return;
+    }
+    if (stage === 1) {
+      this._noiseBurst({ start: now, duration: 0.065, gain: 0.055, frequency: 720, q: 1.4, type: 'bandpass', pan: -0.08 });
+      this._tone({ start: now, duration: 0.075, frequency: 185, endFrequency: 92, gain: 0.045, type: 'triangle', pan: -0.08 });
+      return;
+    }
+    this._noiseBurst({ start: now, duration: 0.045, gain: 0.052, frequency: 2250, q: 2.8, type: 'bandpass', pan: 0.06 });
+    this._tone({ start: now + 0.018, duration: 0.055, frequency: 920, endFrequency: 440, gain: 0.04, type: 'square', pan: 0.06 });
   }
 
   _ready() {

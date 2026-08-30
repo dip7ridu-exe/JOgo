@@ -24,6 +24,7 @@ const TACTICAL_DOUBLE_TAP_MS = 330;
 
 const BASE_FOV = 75;
 const FAST_FOV = 84;
+const ADS_FOV = 62;
 const MOUSE_SENSITIVITY = 0.0022;
 
 /**
@@ -57,6 +58,7 @@ export class PlayerController {
     this.sliding = false;
     this.inkBoost = false;
     this.speed = 0;
+    this.aiming = false;
     this.slideTimer = 0;
     this.wasCrouching = false;
     this.wasOnGround = true;
@@ -116,8 +118,9 @@ export class PlayerController {
 
     document.addEventListener('mousemove', (event) => {
       if (!this.locked) return;
-      this.yawObject.rotation.y -= event.movementX * MOUSE_SENSITIVITY;
-      this.pitchObject.rotation.x -= event.movementY * MOUSE_SENSITIVITY;
+      const sensitivity = MOUSE_SENSITIVITY * (this.aiming ? 0.68 : 1);
+      this.yawObject.rotation.y -= event.movementX * sensitivity;
+      this.pitchObject.rotation.x -= event.movementY * sensitivity;
       const limit = Math.PI / 2 - 0.01;
       this.pitchObject.rotation.x = THREE.MathUtils.clamp(this.pitchObject.rotation.x, -limit, limit);
     });
@@ -161,7 +164,7 @@ export class PlayerController {
 
     this.speed = Math.hypot(this.velocity.x, this.velocity.z);
     this.inkBoost = Boolean(crouching && this.isOwnInkAt?.(this.yawObject.position.x, this.yawObject.position.z));
-    this.sprinting = wantsSprint && inputZ > 0 && !crouching;
+    this.sprinting = wantsSprint && inputZ > 0 && !crouching && !this.aiming;
 
     this.tacticalCooldown = Math.max(0, this.tacticalCooldown - delta);
     const canTacticalSprint = this.sprinting && !this.sliding && this.onGround;
@@ -245,7 +248,8 @@ export class PlayerController {
 
     this.speed = Math.hypot(this.velocity.x, this.velocity.z);
     const speedRatio = THREE.MathUtils.clamp((this.speed - WALK_SPEED) / (MAX_MOMENTUM - WALK_SPEED), 0, 1);
-    const targetFov = THREE.MathUtils.lerp(BASE_FOV, FAST_FOV, speedRatio);
+    const movingFov = THREE.MathUtils.lerp(BASE_FOV, FAST_FOV, speedRatio);
+    const targetFov = this.aiming ? ADS_FOV : movingFov;
     this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, targetFov, Math.min(1, 8 * delta));
     this.camera.updateProjectionMatrix();
 

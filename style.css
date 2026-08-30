@@ -72,6 +72,11 @@ canvas {
   transform: scale(1.35);
 }
 
+body.aiming #crosshair {
+  opacity: 0;
+  transform: scale(0.45);
+}
+
 #hitmarker {
   opacity: 0;
   transform: scale(1.45);
@@ -351,42 +356,104 @@ kbd {
 
 #weapon-hud {
   position: fixed;
-  right: 28px;
-  bottom: 26px;
+  right: 18px;
+  bottom: 18px;
   z-index: 10;
-  min-width: 190px;
-  padding: 14px 16px 12px;
-  border: 3px solid #626262;
-  border-right: 5px solid var(--team);
+  width: 244px;
+  min-height: 142px;
+  overflow: hidden;
+  padding: 14px 17px 13px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-left: 4px solid var(--team);
+  border-radius: 7px;
   color: #fff;
-  background: var(--panel);
-  text-align: right;
+  background:
+    linear-gradient(115deg, color-mix(in srgb, var(--team) 12%, transparent), transparent 48%),
+    linear-gradient(180deg, rgba(24, 28, 33, 0.96), rgba(11, 14, 18, 0.94));
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.48), inset 0 1px rgba(255, 255, 255, 0.06);
+  text-align: left;
   pointer-events: none;
   text-shadow: 0 1px 3px #000;
+  backdrop-filter: blur(8px);
+}
+
+#weapon-hud::after {
+  content: "";
+  position: absolute;
+  right: -42px;
+  bottom: -54px;
+  width: 140px;
+  height: 140px;
+  border: 18px solid color-mix(in srgb, var(--team) 8%, transparent);
+  border-radius: 50%;
+}
+
+.weapon-hud-eyebrow {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 6px;
+  color: rgba(255, 255, 255, 0.48);
+  font: 800 8px/1 "Consolas", monospace;
+  letter-spacing: 0.16em;
+}
+
+.weapon-hud-eyebrow i {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--team), transparent);
 }
 
 #weapon-name {
+  position: relative;
+  z-index: 1;
   color: #fff;
-  font-size: 21px;
-  font-weight: 800;
+  font-size: 22px;
+  font-weight: 900;
   line-height: 1;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
 }
 
 #weapon-category {
-  margin-top: 4px;
-  color: rgba(255, 255, 255, 0.58);
-  font-size: 9px;
-  font-weight: 700;
+  position: relative;
+  z-index: 1;
+  margin-top: 5px;
+  color: var(--team);
+  font-size: 8px;
+  font-weight: 800;
   letter-spacing: 0.13em;
 }
 
+#weapon-mode {
+  position: relative;
+  z-index: 1;
+  display: inline-block;
+  margin-top: 8px;
+  padding: 4px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+  color: rgba(255, 255, 255, 0.62);
+  background: rgba(255, 255, 255, 0.04);
+  font: 700 8px/1 "Consolas", monospace;
+  letter-spacing: 0.07em;
+}
+
+#weapon-mode[data-state="aim"] { color: var(--team); border-color: var(--team); }
+#weapon-mode[data-state="reload"] { color: #ffe08a; }
+#weapon-mode[data-state="tactical"] { color: #93ffd2; }
+
 #ammo {
+  position: absolute;
+  right: 16px;
+  bottom: 13px;
+  z-index: 1;
   display: flex;
   align-items: baseline;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 7px;
-  margin-top: 7px;
   font-family: "Consolas", monospace;
 }
 
@@ -402,55 +469,149 @@ kbd {
 }
 
 #reload-status {
+  position: absolute;
+  left: 20px;
+  bottom: 15px;
+  z-index: 1;
+  max-width: 108px;
   min-height: 12px;
-  margin-top: 7px;
   color: #ffe08a;
-  font: 700 10px/1 "Consolas", monospace;
-  letter-spacing: 0.1em;
+  font: 700 8px/1.25 "Consolas", monospace;
+  letter-spacing: 0.06em;
 }
 
 #weapon-slots {
   position: fixed;
-  bottom: 20px;
-  left: 50%;
+  top: 50%;
+  right: 18px;
   z-index: 10;
   display: flex;
+  width: 226px;
+  padding-top: 24px;
+  flex-direction: column;
+  align-items: flex-end;
   gap: 6px;
-  transform: translateX(-50%);
+  transform: translateY(-55%);
   pointer-events: none;
+}
+
+#weapon-slots::before {
+  content: "ARSENAL // TECLAS 1—5";
+  position: absolute;
+  top: 0;
+  right: 0;
+  color: rgba(255, 255, 255, 0.46);
+  font: 700 8px/1 "Consolas", monospace;
+  letter-spacing: 0.12em;
 }
 
 .weapon-slot {
   display: grid;
-  grid-template-columns: 17px auto;
+  grid-template-columns: 25px 45px minmax(0, 1fr);
   align-items: center;
-  min-width: 70px;
-  min-height: 32px;
-  padding: 5px 8px;
-  border: 3px solid #626262;
+  width: 194px;
+  min-height: 50px;
+  padding: 6px 9px 6px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-left: 3px solid rgba(255, 255, 255, 0.18);
+  border-radius: 5px;
+  color: rgba(255, 255, 255, 0.52);
+  background: linear-gradient(90deg, rgba(22, 26, 31, 0.92), rgba(11, 14, 18, 0.78));
+  box-shadow: 0 4px 13px rgba(0, 0, 0, 0.26), inset 0 1px rgba(255, 255, 255, 0.035);
+  transform: translateX(9px);
+  transition: width 150ms ease, border-color 150ms ease, color 150ms ease, transform 150ms ease, background 150ms ease;
+  backdrop-filter: blur(6px);
+}
+
+.slot-key {
+  display: grid;
+  width: 20px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 3px;
-  color: rgba(255, 255, 255, 0.58);
-  background: var(--panel);
-  box-shadow: inset 0 0 0 1px #292929;
-  transition: border-color 120ms ease, color 120ms ease, transform 120ms ease;
+  color: rgba(255, 255, 255, 0.62);
+  background: rgba(255, 255, 255, 0.035);
+  font: 800 10px/1 "Consolas", monospace;
 }
 
-.weapon-slot span {
-  font: 700 10px/1 "Consolas", monospace;
-  opacity: 0.65;
+.weapon-glyph {
+  display: block;
+  width: 42px;
+  height: 24px;
 }
 
-.weapon-slot strong {
-  font-size: 10px;
-  letter-spacing: 0.05em;
+.weapon-glyph svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.65));
+}
+
+.slot-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.slot-copy small {
+  color: currentColor;
+  font: 700 7px/1 "Consolas", monospace;
+  letter-spacing: 0.12em;
+  opacity: 0.62;
+}
+
+.slot-copy strong {
+  overflow: hidden;
+  color: #fff;
+  font-size: 9px;
+  line-height: 1.1;
+  letter-spacing: 0.04em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.slot-meter {
+  display: block;
+  width: 100%;
+  height: 2px;
+  overflow: hidden;
+  margin-top: 2px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.slot-meter b {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: currentColor;
+  transition: width 100ms linear;
 }
 
 .weapon-slot.active {
+  width: 226px;
   border-color: var(--team);
   color: #fff;
-  box-shadow: 0 0 15px color-mix(in srgb, var(--team) 32%, transparent);
-  transform: translateY(-4px);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--team) 23%, rgba(22, 26, 31, 0.96)), rgba(11, 14, 18, 0.9));
+  box-shadow: 0 0 18px color-mix(in srgb, var(--team) 20%, transparent), inset 0 1px rgba(255, 255, 255, 0.08);
+  transform: translateX(0);
 }
+
+.weapon-slot.active .slot-key {
+  border-color: var(--team);
+  color: #080b0f;
+  background: var(--team);
+}
+
+.weapon-slot.active .weapon-glyph,
+.weapon-slot.active .slot-meter b { color: var(--team); }
+
+.weapon-slot.empty { opacity: 0.52; }
 
 #overlay {
   position: fixed;
@@ -584,5 +745,29 @@ kbd {
 }
 
 @media (min-width: 761px) and (max-width: 1100px) {
-  #weapon-slots { bottom: 108px; }
+  #weapon-slots {
+    right: 10px;
+    transform: translateY(-55%) scale(0.86);
+    transform-origin: right center;
+  }
+
+  #weapon-hud {
+    right: 10px;
+    bottom: 10px;
+    transform: scale(0.9);
+    transform-origin: right bottom;
+  }
+}
+
+@media (min-width: 761px) and (max-height: 700px) {
+  #weapon-slots {
+    gap: 3px;
+    transform: translateY(-58%) scale(0.78);
+    transform-origin: right center;
+  }
+
+  #weapon-hud {
+    transform: scale(0.82);
+    transform-origin: right bottom;
+  }
 }

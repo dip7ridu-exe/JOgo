@@ -3,8 +3,46 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 const BASE_POSITION = new THREE.Vector3(0.34, -0.29, -0.48);
 const BASE_ROTATION = new THREE.Euler(-0.045, -0.055, -0.015);
+const ADS_ROTATION = new THREE.Euler(-0.008, 0, 0);
 const CENTER = new THREE.Vector2(0, 0);
 const UP = new THREE.Vector3(0, 1, 0);
+
+const ADS_POSITIONS = {
+  pistola: new THREE.Vector3(0, -0.115, -0.43),
+  submetralhadora: new THREE.Vector3(0, -0.12, -0.45),
+  rifle_de_assalto: new THREE.Vector3(0, -0.125, -0.47),
+  espingarda: new THREE.Vector3(0, -0.135, -0.48),
+  sniper: new THREE.Vector3(0, -0.13, -0.59),
+};
+
+const CATEGORY_LABELS = {
+  pistola: 'PISTOLA',
+  submetralhadora: 'SMG',
+  rifle_de_assalto: 'RIFLE',
+  espingarda: 'CANHÃO',
+  sniper: 'PRECISÃO',
+};
+
+function smoothstep(edge0, edge1, value) {
+  const t = THREE.MathUtils.clamp((value - edge0) / (edge1 - edge0), 0, 1);
+  return t * t * (3 - 2 * t);
+}
+
+function heldBetween(value, enterStart, enterEnd, exitStart, exitEnd) {
+  return smoothstep(enterStart, enterEnd, value) * (1 - smoothstep(exitStart, exitEnd, value));
+}
+
+function weaponIcon(category) {
+  const common = 'fill="currentColor"';
+  const icons = {
+    pistola: `<path ${common} d="M10 7h25v7H23l-3 8h-7l2-8h-5z"/><path ${common} d="M35 8h6v3h-6z" opacity=".55"/>`,
+    submetralhadora: `<path ${common} d="M4 8h34v7H19l-3 7h-6l2-7H4z"/><path ${common} d="M38 10h7v3h-7z" opacity=".55"/>`,
+    rifle_de_assalto: `<path ${common} d="M3 9h31l5 3-5 4H21l-4 6h-6l2-6H3z"/><path ${common} d="M34 11h11v3H34z" opacity=".6"/>`,
+    espingarda: `<path ${common} d="M3 10h28l6 3-6 4H17l-4 5H8l2-5H3z"/><path ${common} d="M29 11h16v2H29z" opacity=".58"/>`,
+    sniper: `<path ${common} d="M2 11h30l5 3-5 4H18l-4 4H9l2-4H2z"/><path ${common} d="M30 12h16v2H30z" opacity=".58"/><rect ${common} x="17" y="7" width="12" height="4" rx="2"/>`,
+  };
+  return `<svg viewBox="0 0 48 24" aria-hidden="true">${icons[category] ?? icons.pistola}</svg>`;
+}
 
 function material(color, options = {}) {
   return new THREE.MeshStandardMaterial({
@@ -74,7 +112,7 @@ function addInkIndicator(group) {
   });
   const indicator = addMesh(
     group,
-    new THREE.BoxGeometry(0.07, 0.13, 0.07),
+    new THREE.BoxGeometry(0.085, 0.17, 0.085),
     indicatorMaterial,
     [0.115, 0.015, -0.12],
     [0.12, 0, 0],
@@ -157,7 +195,7 @@ function addFirstPersonArms(model, config = {}) {
 }
 
 function registerAnimatedParts(model) {
-  const magazine = model.getObjectByName('Magazine');
+  const magazine = model.getObjectByName('Magazine') ?? model.userData.inkIndicator;
   const action = model.getObjectByName('Slide')
     ?? model.getObjectByName('Bolt')
     ?? model.getObjectByName('Fore_Stock')
@@ -165,8 +203,16 @@ function registerAnimatedParts(model) {
     ?? model.userData.weaponVisual;
 
   model.userData.animatedParts = {
-    magazine: magazine ? { object: magazine, base: magazine.position.clone() } : null,
-    action: action ? { object: action, base: action.position.clone() } : null,
+    magazine: magazine ? {
+      object: magazine,
+      base: magazine.position.clone(),
+      baseRotation: magazine.rotation.clone(),
+    } : null,
+    action: action ? {
+      object: action,
+      base: action.position.clone(),
+      baseRotation: action.rotation.clone(),
+    } : null,
   };
 }
 
@@ -299,7 +345,11 @@ export class WeaponSystem {
     this.score = 0;
     this.flashRemaining = 0;
     this.tacticalBlend = 0;
+    this.aimHeld = false;
+    this.aimBlend = 0;
+    this.reloadAudioStage = 0;
     this.currentPlayer = null;
+    this._lastWeaponMode = '';
 
     this.raycaster = new THREE.Raycaster();
     this.raycaster.far = 120;
@@ -311,6 +361,7 @@ export class WeaponSystem {
 
     this.weaponNameEl = document.getElementById('weapon-name');
     this.weaponCategoryEl = document.getElementById('weapon-category');
+    this.weaponModeEl = document.getElementById('weapon-mode');
     this.ammoEl = document.getElementById('ammo');
     this.reloadEl = document.getElementById('reload-status');
     this.slotsEl = document.getElementById('weapon-slots');
@@ -405,17 +456,27 @@ export class WeaponSystem {
 
   _setupEvents() {
     document.addEventListener('mousedown', (event) => {
-      if (event.button !== 0 || !this.isPlayerLocked()) return;
+      if (!this.isPlayerLocked()) return;
+      if (event.button === 2) {
+        this.aimHeld = true;
+        this.currentPlayer?.cancelTacticalSprint();
+        return;
+      }
+      if (event.button !== 0) return;
       this.fireHeld = true;
       this._tryFire();
     });
 
     document.addEventListener('mouseup', (event) => {
       if (event.button === 0) this.fireHeld = false;
+      if (event.button === 2) this.aimHeld = false;
     });
 
     document.addEventListener('pointerlockchange', () => {
-      if (!this.isPlayerLocked()) this.fireHeld = false;
+      if (!this.isPlayerLocked()) {
+        this.fireHeld = false;
+        this.aimHeld = false;
+      }
     });
 
     document.addEventListener('keydown', (event) => {
@@ -445,7 +506,14 @@ export class WeaponSystem {
       const slot = document.createElement('div');
       slot.className = 'weapon-slot';
       slot.dataset.index = String(index);
-      slot.innerHTML = `<span>${index + 1}</span><strong>${weapon.nome}</strong>`;
+      slot.innerHTML = `
+        <span class="slot-key">${index + 1}</span>
+        <span class="weapon-glyph">${weaponIcon(weapon.categoria)}</span>
+        <span class="slot-copy">
+          <small>${CATEGORY_LABELS[weapon.categoria] ?? 'BLASTER'}</small>
+          <strong>${weapon.nome}</strong>
+          <i class="slot-meter"><b></b></i>
+        </span>`;
       this.slotsEl.appendChild(slot);
     });
   }
@@ -462,6 +530,7 @@ export class WeaponSystem {
     this.reloadRemaining = 0;
     this.reloadDuration = 0;
     this.fireHeld = false;
+    this.aimHeld = false;
     this.cooldown = immediate ? 0 : 0.16;
     this.recoil = immediate ? 0 : 0.12;
     this.fireAnimation = 0;
@@ -469,8 +538,14 @@ export class WeaponSystem {
 
     const activeModel = this.models[index];
     const parts = activeModel.userData.animatedParts;
-    if (parts?.magazine) parts.magazine.object.position.copy(parts.magazine.base);
-    if (parts?.action) parts.action.object.position.copy(parts.action.base);
+    if (parts?.magazine) {
+      parts.magazine.object.position.copy(parts.magazine.base);
+      parts.magazine.object.rotation.copy(parts.magazine.baseRotation);
+    }
+    if (parts?.action) {
+      parts.action.object.position.copy(parts.action.base);
+      parts.action.object.rotation.copy(parts.action.baseRotation);
+    }
     const { leftArm, rightArm } = activeModel.userData.arms ?? {};
     if (leftArm) {
       leftArm.position.copy(leftArm.userData.basePosition);
@@ -494,15 +569,30 @@ export class WeaponSystem {
 
     this.currentPlayer?.cancelTacticalSprint();
     this.fireHeld = false;
+    this.aimHeld = false;
     this.reloadRemaining = weapon.tempoRecarga;
     this.reloadDuration = weapon.tempoRecarga;
+    this.reloadAudioStage = 0;
     this.reloadEl.textContent = `REABASTECENDO TINTA ${this.reloadRemaining.toFixed(1)}s`;
-    this.audio?.playReload();
+    this.audio?.playReload(0);
   }
 
   update(delta, player) {
     if (this.weapons.length === 0) return;
     this.currentPlayer = player;
+    const weapon = this.weapons[this.currentIndex];
+
+    const wantsAim = this.aimHeld
+      && this.reloadRemaining <= 0
+      && !player.sliding
+      && !player.tacticalSprinting;
+    player.aiming = wantsAim;
+    this.aimBlend = THREE.MathUtils.lerp(
+      this.aimBlend,
+      wantsAim ? 1 : 0,
+      Math.min(1, delta * (wantsAim ? 13 : 17)),
+    );
+    document.body.classList.toggle('aiming', this.aimBlend > 0.72);
 
     this.cooldown = Math.max(0, this.cooldown - delta);
     this.idleTime += delta;
@@ -512,7 +602,6 @@ export class WeaponSystem {
     if (this.reloadRemaining > 0) {
       this.reloadRemaining -= delta;
       if (this.reloadRemaining <= 0) {
-        const weapon = this.weapons[this.currentIndex];
         this.ammo[this.currentIndex] = weapon.capacidadeCarregador;
         this.reloadRemaining = 0;
         this.reloadDuration = 0;
@@ -523,43 +612,62 @@ export class WeaponSystem {
       }
     }
 
-    const weapon = this.weapons[this.currentIndex];
     if (this.fireHeld && weapon.automatico && this.reloadRemaining <= 0) this._tryFire();
 
     const reloadProgress = this.reloadRemaining > 0 && this.reloadDuration > 0
       ? 1 - this.reloadRemaining / this.reloadDuration
       : 0;
     const reloadArc = Math.sin(reloadProgress * Math.PI);
-    const magazineArc = reloadProgress > 0.14 && reloadProgress < 0.76
-      ? Math.sin(((reloadProgress - 0.14) / 0.62) * Math.PI)
-      : 0;
+    const magazineHold = heldBetween(reloadProgress, 0.12, 0.31, 0.67, 0.86);
+    const handReach = heldBetween(reloadProgress, 0.06, 0.24, 0.78, 0.97);
+    const magazineSwing = Math.sin(
+      THREE.MathUtils.clamp((reloadProgress - 0.14) / 0.7, 0, 1) * Math.PI,
+    );
+    if (this.reloadRemaining > 0 && reloadProgress >= 0.3 && this.reloadAudioStage < 1) {
+      this.reloadAudioStage = 1;
+      this.audio?.playReload(1);
+    }
+    if (this.reloadRemaining > 0 && reloadProgress >= 0.73 && this.reloadAudioStage < 2) {
+      this.reloadAudioStage = 2;
+      this.audio?.playReload(2);
+    }
+
     const equipEase = 1 - Math.pow(1 - this.equipProgress, 3);
     const model = this.models[this.currentIndex];
     const parts = model.userData.animatedParts;
     if (parts?.magazine) {
       parts.magazine.object.position.copy(parts.magazine.base);
-      parts.magazine.object.position.y -= magazineArc * 0.105;
+      parts.magazine.object.rotation.copy(parts.magazine.baseRotation);
+      parts.magazine.object.position.x -= magazineSwing * 0.08;
+      parts.magazine.object.position.y -= magazineHold * 0.28;
+      parts.magazine.object.position.z += magazineSwing * 0.055;
+      parts.magazine.object.rotation.x += magazineSwing * 0.14;
+      parts.magazine.object.rotation.z += magazineSwing * 0.2;
     }
     if (parts?.action) {
       parts.action.object.position.copy(parts.action.base);
+      parts.action.object.rotation.copy(parts.action.baseRotation);
       parts.action.object.position.z += this.fireAnimation * 0.032;
     }
 
     const { leftArm, rightArm } = model.userData.arms ?? {};
     if (leftArm) {
       leftArm.position.copy(leftArm.userData.basePosition);
-      leftArm.position.x -= magazineArc * 0.055;
-      leftArm.position.y -= magazineArc * 0.12;
-      leftArm.position.z += magazineArc * 0.075;
+      leftArm.position.x -= handReach * 0.12;
+      leftArm.position.y -= magazineHold * 0.22;
+      leftArm.position.z += handReach * 0.13;
       leftArm.rotation.copy(leftArm.userData.baseRotation);
-      leftArm.rotation.x += reloadArc * 0.18;
-      leftArm.rotation.z += reloadArc * 0.38;
+      leftArm.rotation.x += reloadArc * 0.32;
+      leftArm.rotation.y -= magazineSwing * 0.1;
+      leftArm.rotation.z += reloadArc * 0.58;
     }
     if (rightArm) {
       rightArm.position.copy(rightArm.userData.basePosition);
       rightArm.position.z += this.fireAnimation * 0.012;
+      rightArm.position.y -= reloadArc * 0.025;
       rightArm.rotation.copy(rightArm.userData.baseRotation);
       rightArm.rotation.x -= this.fireAnimation * 0.035;
+      rightArm.rotation.z -= reloadArc * 0.1;
     }
 
     if (this.flashRemaining > 0) {
@@ -573,36 +681,66 @@ export class WeaponSystem {
     const sliding = moving && player.sliding;
     this.tacticalBlend = THREE.MathUtils.lerp(this.tacticalBlend, tactical ? 1 : 0, Math.min(1, delta * (tactical ? 10 : 14)));
     this.bobTime += delta * (tactical ? 15.5 : (sprinting ? 13 : 8));
-    const bobStrength = moving && player.onGround && !sliding ? (tactical ? 0.027 : (sprinting ? 0.018 : 0.009)) : 0;
+    const aimStability = THREE.MathUtils.lerp(1, 0.18, this.aimBlend);
+    const bobStrength = moving && player.onGround && !sliding
+      ? (tactical ? 0.027 : (sprinting ? 0.018 : 0.009)) * aimStability
+      : 0;
     const bobX = Math.cos(this.bobTime) * bobStrength;
     const bobY = Math.abs(Math.sin(this.bobTime)) * bobStrength;
-    const breatheY = Math.sin(this.idleTime * 1.7) * 0.0035;
+    const breatheY = Math.sin(this.idleTime * 1.7) * THREE.MathUtils.lerp(0.0035, 0.0012, this.aimBlend);
+    const aimSway = Math.sin(this.idleTime * 1.25) * 0.0016 * this.aimBlend;
     const tacticalSway = Math.sin(this.bobTime * 0.5) * 0.035 * this.tacticalBlend;
 
     this.recoil = THREE.MathUtils.lerp(this.recoil, 0, Math.min(1, delta * 13));
-    const sprintDrop = tactical ? 0.14 : (sprinting ? 0.09 : (sliding ? 0.12 : 0));
+    const sprintDrop = (tactical ? 0.14 : (sprinting ? 0.09 : (sliding ? 0.12 : 0))) * (1 - this.aimBlend);
     const equipDrop = (1 - equipEase) * 0.34;
-    const targetX = BASE_POSITION.x + bobX + reloadArc * 0.055 - this.tacticalBlend * 0.11;
-    const targetY = BASE_POSITION.y - bobY - sprintDrop + breatheY - equipDrop - reloadArc * 0.09;
-    const targetZ = BASE_POSITION.z + this.recoil + (sprinting ? 0.04 : 0) + this.tacticalBlend * 0.08;
+    const adsPosition = ADS_POSITIONS[weapon.categoria] ?? ADS_POSITIONS.pistola;
+    const baseX = THREE.MathUtils.lerp(BASE_POSITION.x, adsPosition.x, this.aimBlend);
+    const baseY = THREE.MathUtils.lerp(BASE_POSITION.y, adsPosition.y, this.aimBlend);
+    const baseZ = THREE.MathUtils.lerp(BASE_POSITION.z, adsPosition.z, this.aimBlend);
+    const targetX = baseX + bobX + aimSway + reloadArc * 0.085 - this.tacticalBlend * 0.11;
+    const targetY = baseY - bobY - sprintDrop + breatheY - equipDrop - reloadArc * 0.115;
+    const targetZ = baseZ + this.recoil + (sprinting ? 0.04 : 0) + this.tacticalBlend * 0.08 + reloadArc * 0.1;
     this.root.position.x = THREE.MathUtils.lerp(this.root.position.x, targetX, Math.min(1, delta * 14));
     this.root.position.y = THREE.MathUtils.lerp(this.root.position.y, targetY, Math.min(1, delta * 14));
     this.root.position.z = THREE.MathUtils.lerp(this.root.position.z, targetZ, Math.min(1, delta * 18));
+
+    const baseRotX = THREE.MathUtils.lerp(BASE_ROTATION.x, ADS_ROTATION.x, this.aimBlend);
+    const baseRotY = THREE.MathUtils.lerp(BASE_ROTATION.y, ADS_ROTATION.y, this.aimBlend);
+    const baseRotZ = THREE.MathUtils.lerp(BASE_ROTATION.z, ADS_ROTATION.z, this.aimBlend);
     this.root.rotation.x = THREE.MathUtils.lerp(
       this.root.rotation.x,
-      BASE_ROTATION.x - this.recoil * 0.42 + reloadArc * 0.16 + this.tacticalBlend * 1.02,
+      baseRotX - this.recoil * 0.42 + reloadArc * 0.22 + this.tacticalBlend * 1.02,
       Math.min(1, delta * 18),
     );
     this.root.rotation.y = THREE.MathUtils.lerp(
       this.root.rotation.y,
-      BASE_ROTATION.y + (1 - equipEase) * 0.48 + reloadArc * 0.12 + tacticalSway,
+      baseRotY + (1 - equipEase) * 0.48 + reloadArc * 0.2 + tacticalSway,
       Math.min(1, delta * 15),
     );
     this.root.rotation.z = THREE.MathUtils.lerp(
       this.root.rotation.z,
-      BASE_ROTATION.z + bobX * 0.8 - (1 - equipEase) * 0.38 - reloadArc * 0.28 - this.tacticalBlend * 0.2,
+      baseRotZ + bobX * 0.8 - (1 - equipEase) * 0.38 - reloadArc * 0.46 - this.tacticalBlend * 0.2,
       Math.min(1, delta * 12),
     );
+
+    let mode = 'MODO LIVRE · RMB MIRAR';
+    let modeState = 'free';
+    if (this.reloadRemaining > 0) {
+      mode = 'RECARREGANDO · R';
+      modeState = 'reload';
+    } else if (player.tacticalSprinting) {
+      mode = 'CORRIDA TÁTICA';
+      modeState = 'tactical';
+    } else if (this.aimBlend > 0.6) {
+      mode = 'MIRA PRECISA · RMB';
+      modeState = 'aim';
+    }
+    if (mode !== this._lastWeaponMode && this.weaponModeEl) {
+      this.weaponModeEl.textContent = mode;
+      this.weaponModeEl.dataset.state = modeState;
+      this._lastWeaponMode = mode;
+    }
   }
 
   _tryFire() {
@@ -645,7 +783,9 @@ export class WeaponSystem {
 
     for (let pellet = 0; pellet < pelletCount; pellet++) {
       this.worldDirection.copy(baseDirection);
-      const spread = weapon.dispersao ?? 0.004;
+      const baseSpread = weapon.dispersao ?? 0.004;
+      const aimedSpreadFactor = weapon.categoria === 'espingarda' ? 0.64 : 0.28;
+      const spread = baseSpread * THREE.MathUtils.lerp(1, aimedSpreadFactor, this.aimBlend);
       this.worldDirection.addScaledVector(this.cameraRight, (Math.random() - 0.5) * spread);
       this.worldDirection.addScaledVector(this.cameraUp, (Math.random() - 0.5) * spread);
       this.worldDirection.normalize();
@@ -724,7 +864,16 @@ export class WeaponSystem {
     if (!weapon) return;
 
     this.weaponNameEl.textContent = weapon.nome;
-    this.weaponCategoryEl.textContent = weapon.categoria.replaceAll('_', ' ').toUpperCase();
+    this.weaponCategoryEl.textContent = CATEGORY_LABELS[weapon.categoria] ?? weapon.categoria.replaceAll('_', ' ').toUpperCase();
     this.ammoEl.innerHTML = `<strong>${String(this.ammo[this.currentIndex]).padStart(2, '0')}</strong><span>/ TANQUE</span>`;
+
+    for (const slot of this.slotsEl.children) {
+      const index = Number(slot.dataset.index);
+      const capacity = this.weapons[index]?.capacidadeCarregador ?? 1;
+      const ratio = THREE.MathUtils.clamp((this.ammo[index] ?? 0) / capacity, 0, 1);
+      const meter = slot.querySelector('.slot-meter b');
+      if (meter) meter.style.width = `${Math.round(ratio * 100)}%`;
+      slot.classList.toggle('empty', ratio <= 0);
+    }
   }
 }
