@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 const BASE_POSITION = new THREE.Vector3(0.34, -0.29, -0.48);
 const BASE_ROTATION = new THREE.Euler(-0.045, -0.055, -0.015);
@@ -40,6 +41,7 @@ function cylinder(group, radius, length, position, meshMaterial, rotation = [Mat
 
 function addMuzzle(group, position) {
   const anchor = new THREE.Object3D();
+  anchor.name = 'muzzle';
   anchor.position.set(...position);
 
   const flashMaterial = new THREE.MeshBasicMaterial({
@@ -130,7 +132,7 @@ function createSniper(colors) {
   return group;
 }
 
-function createModel(definition) {
+function createFallbackModel(definition) {
   const palette = definition.cores ?? {};
   const colors = {
     main: material(palette.principal ?? '#48515d'),
@@ -159,6 +161,7 @@ export class WeaponSystem {
     this.scene = scene;
     this.shootables = shootables;
     this.isPlayerLocked = isPlayerLocked;
+    this.loader = new GLTFLoader();
 
     this.root = new THREE.Group();
     this.root.position.copy(BASE_POSITION);
@@ -198,6 +201,9 @@ export class WeaponSystem {
   }
 
   async init() {
+    const overlayMessage = document.getElementById('overlay-message');
+    if (overlayMessage) overlayMessage.textContent = 'Carregando 5 modelos 3D...';
+
     const response = await fetch('./weapons.json');
     if (!response.ok) throw new Error(`weapons.json retornou HTTP ${response.status}`);
 
@@ -208,14 +214,56 @@ export class WeaponSystem {
 
     this.weapons = data.armas.slice(0, 5);
     this.ammo = this.weapons.map((weapon) => weapon.capacidadeCarregador);
-    this.models = this.weapons.map((weapon) => {
-      const model = createModel(weapon);
+    this.models = await Promise.all(this.weapons.map(async (weapon) => {
+      const model = await this._loadModel(weapon);
       this.root.add(model);
       return model;
-    });
+    }));
 
     this._renderSlots();
     this.select(0, true);
+    if (overlayMessage) overlayMessage.textContent = 'Clique em qualquer lugar para entrar no teste';
+  }
+
+  async _loadModel(weapon) {
+    const config = weapon.modelo3D;
+    if (!config?.arquivo) return createFallbackModel(weapon);
+
+    try {
+      const gltf = await this.loader.loadAsync(config.arquivo);
+      const model = new THREE.Group();
+      const visual = gltf.scene;
+
+      model.name = weapon.id;
+      visual.name = `${weapon.id}-glb`;
+      visual.position.fromArray(config.posicao ?? [0, 0, 0]);
+      visual.rotation.set(...(config.rotacao ?? [0, 0, 0]));
+      visual.scale.fromArray(config.escala ?? [1, 1, 1]);
+
+      visual.traverse((child) => {
+        if (!child.isMesh) return;
+        child.castShadow = false;
+        child.receiveShadow = false;
+        child.frustumCulled = false;
+        child.renderOrder = 20;
+      });
+
+      model.add(visual);
+      addMuzzle(model, config.muzzle ?? [0, 0, -0.8]);
+      model.userData.asset = {
+        formato: 'glb',
+        arquivo: config.arquivo,
+        autor: 'Kenney',
+        licenca: 'CC0 1.0',
+      };
+      model.visible = false;
+      return model;
+    } catch (error) {
+      console.warn(`Falha ao carregar ${config.arquivo}; usando modelo reserva.`, error);
+      const fallback = createFallbackModel(weapon);
+      fallback.userData.asset = { formato: 'procedural-fallback' };
+      return fallback;
+    }
   }
 
   _setupEvents() {

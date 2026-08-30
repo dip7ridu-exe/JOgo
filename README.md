@@ -36,21 +36,23 @@ Também funciona no GitHub Pages: em **Settings → Pages**, escolha
 
 ## Armas incluídas
 
-Os cinco modelos atuais são originais e gerados com geometrias do Three.js em
-`weapons.js`. Assim, o protótipo funciona imediatamente, sem baixar arquivos e
-sem depender de licença de terceiros.
+Os cinco modelos atuais vêm do **Kenney Blaster Kit 2.1**, são carregados como
+`.glb` pelo `GLTFLoader` e usam licença CC0. Os arquivos estão dentro do próprio
+projeto, então o jogo não baixa modelos de serviços externos durante a partida.
 
-| Tecla | Arma | Tipo | Funcionamento |
-|---|---|---|---|
-| 1 | PT-9 | Pistola | Semiautomática |
-| 2 | VK-5 | Submetralhadora | Automática |
-| 3 | AR-7 | Rifle de assalto | Automático |
-| 4 | SG-2 | Espingarda | 8 projéteis por disparo |
-| 5 | RK-1 | Sniper | Alto dano e alta precisão |
+| Tecla | Arma | Tipo | Modelo GLB | Funcionamento |
+|---|---|---|---|---|
+| 1 | PT-9 | Pistola | `blaster-a.glb` | Semiautomática |
+| 2 | VK-5 | Submetralhadora | `blaster-d.glb` | Automática |
+| 3 | AR-7 | Rifle de assalto | `blaster-g.glb` | Automático |
+| 4 | SG-2 | Espingarda | `blaster-l.glb` | 8 projéteis por disparo |
+| 5 | RK-1 | Sniper | `blaster-e.glb` | Alto dano e alta precisão |
 
-Dano, cadência, munição, recarga, recuo, dispersão e cores ficam centralizados
-em `weapons.json`. Os modelos são montados e conectados ao sistema de tiro em
-`weapons.js`.
+Dano, cadência, munição, recarga, recuo, dispersão, caminho do modelo, escala,
+posição, rotação e ponto `muzzle` ficam centralizados em `weapons.json`. O
+carregamento e o sistema de tiro ficam em `weapons.js`. Caso algum GLB falhe ao
+carregar, o jogo mantém um modelo procedural de reserva para não interromper a
+partida.
 
 ## Estrutura
 
@@ -61,14 +63,22 @@ JOgo/
 ├── main.js          # inicialização, cena e loop principal
 ├── map.js           # arena, colisões e alvos reativos
 ├── player.js        # Pointer Lock e movimentação FPS
-├── weapons.js       # modelos 3D, troca, tiro, dano e recarga
-└── weapons.json     # atributos das cinco armas
+├── weapons.js       # GLTFLoader, modelos de reserva, tiro, dano e recarga
+├── weapons.json     # atributos e ajuste visual das cinco armas
+└── models/
+    └── weapons/
+        ├── blaster-a.glb
+        ├── blaster-d.glb
+        ├── blaster-e.glb
+        ├── blaster-g.glb
+        ├── blaster-l.glb
+        └── LICENSES.md
 ```
 
 ## Onde conseguir modelos 3D de armas
 
-Para substituir os modelos de teste por arquivos `.glb`, prefira pacotes com
-licença clara e guarde a licença junto dos assets.
+Para adicionar outros arquivos `.glb`, prefira pacotes com licença clara e
+guarde a licença junto dos assets.
 
 - [Kenney — Blaster Kit](https://kenney.nl/assets/blaster-kit): 40 arquivos 3D,
   licença CC0.
@@ -87,14 +97,15 @@ Não use nomes, texturas ou modelos extraídos de Valorant, Call of Duty ou outr
 jogo comercial. APIs como `valorant-api.com` fornecem dados de consulta, não uma
 licença para reutilizar os assets em outro jogo.
 
-### Troca futura por `.glb`
+### Integração `.glb` implementada
 
-1. Converta o asset permitido para `.glb` e salve em `models/weapons/`.
-2. Importe o `GLTFLoader` usando a mesma versão do Three.js do `index.html`.
-3. Carregue o arquivo, ajuste escala/rotação e prenda `gltf.scene` ao
-   `WeaponSystem`.
-4. Preserve um ponto chamado `muzzle` para o clarão e o início do traçante.
-5. Registre autor, link e licença em `models/weapons/LICENSES.md`.
+1. Os assets permitidos estão em `models/weapons/` como GLBs autocontidos.
+2. O `index.html` mapeia `three` e `three/addons/` para a mesma versão `0.169.0`.
+3. O `WeaponSystem` usa `GLTFLoader.loadAsync()` e prende cada `gltf.scene` ao
+   view model da câmera.
+4. Cada arma possui um objeto `muzzle` usado pelo clarão e pelo traçante.
+5. Autor, fonte, versão do pacote e licença estão registrados em
+   `models/weapons/LICENSES.md`.
 
 ## Correção da tela inicial
 

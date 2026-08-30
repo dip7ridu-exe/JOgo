@@ -1,5 +1,5 @@
 {
-  "_sobre": "Cinco armas de teste conectadas ao jogo. Os modelos low-poly atuais são gerados localmente por weapons.js e não dependem de assets externos. Os campos modeloSugerido indicam pacotes CC0 para uma futura troca por arquivos GLB.",
+  "_sobre": "Cinco armas de teste conectadas ao jogo com modelos GLB do Kenney Blaster Kit 2.1 (CC0). Escala, posição, rotação e ponto muzzle são configurados individualmente. Se um GLB falhar, weapons.js usa temporariamente o modelo procedural de reserva.",
   "armas": [
     {
       "id": "pistola_pt9",
@@ -13,13 +13,19 @@
       "automatico": false,
       "recuo": 0.07,
       "dispersao": 0.005,
+      "modelo3D": {
+        "arquivo": "./models/weapons/blaster-a.glb",
+        "escala": [1.15, 1.15, 1.15],
+        "posicao": [0, 0, -0.18],
+        "rotacao": [0, 0, 0],
+        "muzzle": [0, 0.058, -0.64]
+      },
       "cores": {
         "principal": "#59636f",
         "metal": "#20262c",
         "empunhadura": "#171b20",
         "detalhe": "#f5a142"
-      },
-      "modeloSugerido": "Kenney — Blaster Kit (CC0)"
+      }
     },
     {
       "id": "smg_vk5",
@@ -33,13 +39,19 @@
       "automatico": true,
       "recuo": 0.035,
       "dispersao": 0.012,
+      "modelo3D": {
+        "arquivo": "./models/weapons/blaster-d.glb",
+        "escala": [1.2, 1.2, 1.2],
+        "posicao": [0, 0, -0.2],
+        "rotacao": [0, 0, 0],
+        "muzzle": [0, 0.068, -0.78]
+      },
       "cores": {
         "principal": "#283b45",
         "metal": "#12191f",
         "empunhadura": "#18242b",
         "detalhe": "#36d6b0"
-      },
-      "modeloSugerido": "Quaternius — Ultimate Guns Pack (CC0)"
+      }
     },
     {
       "id": "rifle_ar7",
@@ -53,13 +65,19 @@
       "automatico": true,
       "recuo": 0.052,
       "dispersao": 0.008,
+      "modelo3D": {
+        "arquivo": "./models/weapons/blaster-g.glb",
+        "escala": [1.35, 1.35, 1.35],
+        "posicao": [0, -0.01, -0.25],
+        "rotacao": [0, 0, 0],
+        "muzzle": [0, 0.1, -0.75]
+      },
       "cores": {
         "principal": "#4b5144",
         "metal": "#1d221d",
         "empunhadura": "#242b22",
         "detalhe": "#d0a84b"
-      },
-      "modeloSugerido": "Quaternius — Ultimate Guns Pack (CC0)"
+      }
     },
     {
       "id": "shotgun_sg2",
@@ -74,13 +92,19 @@
       "recuo": 0.2,
       "dispersao": 0.075,
       "projeteisPorTiro": 8,
+      "modelo3D": {
+        "arquivo": "./models/weapons/blaster-l.glb",
+        "escala": [1.5, 1.5, 1.5],
+        "posicao": [0, -0.01, -0.22],
+        "rotacao": [0, 0, 0],
+        "muzzle": [0, 0.05, -0.66]
+      },
       "cores": {
         "principal": "#493527",
         "metal": "#20252a",
         "empunhadura": "#5d3520",
         "detalhe": "#b8733f"
-      },
-      "modeloSugerido": "Quaternius — Ultimate Guns Pack (CC0)"
+      }
     },
     {
       "id": "sniper_rk1",
@@ -94,13 +118,19 @@
       "automatico": false,
       "recuo": 0.22,
       "dispersao": 0.001,
+      "modelo3D": {
+        "arquivo": "./models/weapons/blaster-e.glb",
+        "escala": [1.05, 1.05, 1.05],
+        "posicao": [0.05, -0.01, -1.18],
+        "rotacao": [0, 0, 0],
+        "muzzle": [0.003, 0.022, -1.22]
+      },
       "cores": {
         "principal": "#34424a",
         "metal": "#151b20",
         "empunhadura": "#25343c",
         "detalhe": "#45a9cf"
-      },
-      "modeloSugerido": "Quaternius — Ultimate Guns Pack (CC0)"
+      }
     }
   ]
 }
