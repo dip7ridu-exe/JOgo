@@ -1,216 +1,141 @@
 {
-  "_sobre": "Cinco armas convencionais do Free CC0 Guns & Explosives Pack, de 3dmodelscc0. Os modelos originais em FBX foram convertidos para GLB autocontido com texturas PBR. Cada arma possui ponto muzzle, empunhaduras para os braços procedurais e peças móveis usadas pelas animações.",
+  "_sobre": "Cinco blasters low-poly CC0 do Kenney Blaster Kit 2.1, usados como armas de tinta. Os valores de dano, cadência, tanque, raio de pintura, recarga, pontos de empunhadura e muzzle são ajustáveis neste arquivo.",
   "armas": [
     {
-      "id": "makarov",
-      "nome": "Makarov",
+      "id": "pulso",
+      "nome": "Blaster Pulso",
       "categoria": "pistola",
-      "dano": 34,
-      "cadenciaTiro": 5,
-      "capacidadeCarregador": 12,
-      "tempoRecarga": 1.35,
-      "velocidadeBala": 900,
+      "dano": 28,
+      "cadenciaTiro": 5.5,
+      "capacidadeCarregador": 18,
+      "tempoRecarga": 1.1,
       "automatico": false,
-      "recuo": 0.07,
-      "dispersao": 0.005,
+      "recuo": 0.065,
+      "dispersao": 0.006,
+      "raioTinta": 1.05,
       "modelo3D": {
-        "arquivo": "./models/weapons/makarov.glb",
-        "autor": "3dmodelscc0",
+        "arquivo": "./models/weapons/blaster-a.glb",
+        "autor": "Kenney",
         "licenca": "CC0 1.0",
-        "escala": [2, 2, 2],
-        "posicao": [0, 0, -0.12],
+        "escala": [1.15, 1.15, 1.15],
+        "posicao": [0, 0, -0.18],
         "rotacao": [0, 0, 0],
-        "muzzle": [0.008, 0.098, -0.38],
+        "muzzle": [0, 0.058, -0.64],
         "bracos": {
-          "direita": {
-            "ombro": [0.48, -0.43, 0.2],
-            "cotovelo": [0.3, -0.33, 0.13],
-            "mao": [0.02, -0.09, 0.04],
-            "rotacaoMao": [1.5708, 0, 0]
-          },
-          "esquerda": {
-            "ombro": [-0.4, -0.43, 0.17],
-            "cotovelo": [-0.23, -0.29, 0.05],
-            "mao": [-0.05, -0.045, -0.045],
-            "rotacaoMao": [1.5708, 0.1, -0.18]
-          }
+          "direita": { "ombro": [0.48, -0.43, 0.2], "cotovelo": [0.3, -0.34, 0.12], "mao": [0.025, -0.1, 0.035], "rotacaoMao": [1.5708, 0, 0] },
+          "esquerda": { "ombro": [-0.4, -0.43, 0.17], "cotovelo": [-0.23, -0.3, 0.04], "mao": [-0.045, -0.06, -0.18], "rotacaoMao": [1.5708, 0.08, -0.14] }
         }
       },
-      "cores": {
-        "principal": "#4a4d50",
-        "metal": "#202326",
-        "empunhadura": "#34251d",
-        "detalhe": "#9a7652"
-      }
+      "cores": { "principal": "#22d3ee", "metal": "#263141", "empunhadura": "#121923", "detalhe": "#ffb02e" }
     },
     {
-      "id": "grease_gun",
-      "nome": "Grease Gun M3",
+      "id": "rajada",
+      "nome": "Blaster Rajada",
       "categoria": "submetralhadora",
-      "dano": 20,
-      "cadenciaTiro": 9.5,
-      "capacidadeCarregador": 30,
-      "tempoRecarga": 1.85,
-      "velocidadeBala": 800,
+      "dano": 16,
+      "cadenciaTiro": 11,
+      "capacidadeCarregador": 36,
+      "tempoRecarga": 1.45,
       "automatico": true,
-      "recuo": 0.04,
-      "dispersao": 0.012,
+      "recuo": 0.038,
+      "dispersao": 0.014,
+      "raioTinta": 0.78,
       "modelo3D": {
-        "arquivo": "./models/weapons/grease-gun.glb",
-        "autor": "3dmodelscc0",
+        "arquivo": "./models/weapons/blaster-d.glb",
+        "autor": "Kenney",
         "licenca": "CC0 1.0",
-        "escala": [1.25, 1.25, 1.25],
-        "posicao": [0, 0.04, -0.12],
+        "escala": [1.2, 1.2, 1.2],
+        "posicao": [0, 0, -0.2],
         "rotacao": [0, 0, 0],
-        "muzzle": [0, 0.06, -0.545],
+        "muzzle": [0, 0.068, -0.78],
         "bracos": {
-          "direita": {
-            "ombro": [0.48, -0.43, 0.2],
-            "cotovelo": [0.3, -0.34, 0.11],
-            "mao": [0.02, -0.09, 0.035],
-            "rotacaoMao": [1.5708, 0, 0]
-          },
-          "esquerda": {
-            "ombro": [-0.4, -0.43, 0.17],
-            "cotovelo": [-0.24, -0.3, 0.01],
-            "mao": [-0.025, -0.055, -0.34],
-            "rotacaoMao": [1.5708, 0, 0]
-          }
+          "direita": { "ombro": [0.48, -0.43, 0.2], "cotovelo": [0.3, -0.34, 0.11], "mao": [0.025, -0.1, 0.025], "rotacaoMao": [1.5708, 0, 0] },
+          "esquerda": { "ombro": [-0.4, -0.43, 0.17], "cotovelo": [-0.24, -0.3, 0], "mao": [-0.035, -0.055, -0.3], "rotacaoMao": [1.5708, 0, 0] }
         }
       },
-      "cores": {
-        "principal": "#4b5052",
-        "metal": "#252a2c",
-        "empunhadura": "#22272a",
-        "detalhe": "#7b8588"
-      }
+      "cores": { "principal": "#8b5cf6", "metal": "#242b38", "empunhadura": "#111827", "detalhe": "#22d3ee" }
     },
     {
-      "id": "m4a1",
-      "nome": "M4A1",
+      "id": "vetor",
+      "nome": "Blaster Vetor",
       "categoria": "rifle_de_assalto",
-      "dano": 32,
-      "cadenciaTiro": 9.5,
+      "dano": 28,
+      "cadenciaTiro": 8.5,
       "capacidadeCarregador": 30,
-      "tempoRecarga": 2.15,
-      "velocidadeBala": 950,
+      "tempoRecarga": 1.65,
       "automatico": true,
-      "recuo": 0.052,
-      "dispersao": 0.008,
+      "recuo": 0.05,
+      "dispersao": 0.009,
+      "raioTinta": 1.08,
       "modelo3D": {
-        "arquivo": "./models/weapons/m4a1.glb",
-        "autor": "3dmodelscc0",
+        "arquivo": "./models/weapons/blaster-g.glb",
+        "autor": "Kenney",
         "licenca": "CC0 1.0",
-        "escala": [1.05, 1.05, 1.05],
-        "posicao": [0, 0.03, -0.12],
+        "escala": [1.35, 1.35, 1.35],
+        "posicao": [0, -0.01, -0.25],
         "rotacao": [0, 0, 0],
-        "muzzle": [0, 0.055, -0.685],
+        "muzzle": [0, 0.1, -0.75],
         "bracos": {
-          "direita": {
-            "ombro": [0.48, -0.43, 0.2],
-            "cotovelo": [0.3, -0.34, 0.09],
-            "mao": [0.018, -0.095, -0.06],
-            "rotacaoMao": [1.5708, 0, 0]
-          },
-          "esquerda": {
-            "ombro": [-0.4, -0.43, 0.17],
-            "cotovelo": [-0.24, -0.3, -0.03],
-            "mao": [-0.025, -0.045, -0.405],
-            "rotacaoMao": [1.5708, 0, 0]
-          }
+          "direita": { "ombro": [0.48, -0.43, 0.2], "cotovelo": [0.3, -0.34, 0.1], "mao": [0.025, -0.1, 0], "rotacaoMao": [1.5708, 0, 0] },
+          "esquerda": { "ombro": [-0.4, -0.43, 0.17], "cotovelo": [-0.24, -0.3, -0.02], "mao": [-0.035, -0.055, -0.34], "rotacaoMao": [1.5708, 0, 0] }
         }
       },
-      "cores": {
-        "principal": "#34383a",
-        "metal": "#1d2022",
-        "empunhadura": "#202426",
-        "detalhe": "#697174"
-      }
+      "cores": { "principal": "#ff4f87", "metal": "#303747", "empunhadura": "#131923", "detalhe": "#ffcf33" }
     },
     {
-      "id": "shotgun",
-      "nome": "Shotgun",
+      "id": "onda",
+      "nome": "Canhão Onda",
       "categoria": "espingarda",
-      "dano": 104,
-      "cadenciaTiro": 1.15,
-      "capacidadeCarregador": 6,
-      "tempoRecarga": 2.7,
-      "velocidadeBala": 700,
+      "dano": 98,
+      "cadenciaTiro": 1.2,
+      "capacidadeCarregador": 8,
+      "tempoRecarga": 2.05,
       "automatico": false,
-      "recuo": 0.2,
-      "dispersao": 0.075,
-      "projeteisPorTiro": 8,
+      "recuo": 0.19,
+      "dispersao": 0.072,
+      "projeteisPorTiro": 7,
+      "raioTinta": 0.84,
       "modelo3D": {
-        "arquivo": "./models/weapons/shotgun.glb",
-        "autor": "3dmodelscc0",
+        "arquivo": "./models/weapons/blaster-l.glb",
+        "autor": "Kenney",
         "licenca": "CC0 1.0",
-        "escala": [0.75, 0.75, 0.75],
-        "posicao": [0, 0.04, -0.3],
+        "escala": [1.5, 1.5, 1.5],
+        "posicao": [0, -0.01, -0.22],
         "rotacao": [0, 0, 0],
-        "muzzle": [0, 0.055, -0.605],
+        "muzzle": [0, 0.05, -0.66],
         "bracos": {
-          "direita": {
-            "ombro": [0.48, -0.43, 0.2],
-            "cotovelo": [0.3, -0.34, 0.1],
-            "mao": [0.018, -0.075, -0.005],
-            "rotacaoMao": [1.5708, 0, 0]
-          },
-          "esquerda": {
-            "ombro": [-0.4, -0.43, 0.17],
-            "cotovelo": [-0.24, -0.3, -0.02],
-            "mao": [-0.025, -0.025, -0.345],
-            "rotacaoMao": [1.5708, 0, 0]
-          }
+          "direita": { "ombro": [0.48, -0.43, 0.2], "cotovelo": [0.3, -0.34, 0.11], "mao": [0.025, -0.09, 0.015], "rotacaoMao": [1.5708, 0, 0] },
+          "esquerda": { "ombro": [-0.4, -0.43, 0.17], "cotovelo": [-0.24, -0.3, -0.02], "mao": [-0.04, -0.045, -0.36], "rotacaoMao": [1.5708, 0, 0] }
         }
       },
-      "cores": {
-        "principal": "#3c3026",
-        "metal": "#24282b",
-        "empunhadura": "#5a3824",
-        "detalhe": "#9b6a3e"
-      }
+      "cores": { "principal": "#ff9d45", "metal": "#2a3140", "empunhadura": "#131923", "detalhe": "#8b5cf6" }
     },
     {
-      "id": "sniper",
-      "nome": "Sniper Rifle",
+      "id": "prisma",
+      "nome": "Blaster Prisma",
       "categoria": "sniper",
-      "dano": 125,
-      "cadenciaTiro": 0.85,
+      "dano": 115,
+      "cadenciaTiro": 0.9,
       "capacidadeCarregador": 5,
-      "tempoRecarga": 2.9,
-      "velocidadeBala": 1400,
+      "tempoRecarga": 2.3,
       "automatico": false,
       "recuo": 0.22,
       "dispersao": 0.001,
+      "raioTinta": 2.1,
       "modelo3D": {
-        "arquivo": "./models/weapons/sniper.glb",
-        "autor": "3dmodelscc0",
+        "arquivo": "./models/weapons/blaster-e.glb",
+        "autor": "Kenney",
         "licenca": "CC0 1.0",
-        "escala": [0.82, 0.82, 0.82],
-        "posicao": [0, 0.04, -0.18],
+        "escala": [1.05, 1.05, 1.05],
+        "posicao": [0.05, -0.01, -1.18],
         "rotacao": [0, 0, 0],
-        "muzzle": [0, 0.06, -0.612],
+        "muzzle": [0.003, 0.022, -1.22],
         "bracos": {
-          "direita": {
-            "ombro": [0.48, -0.43, 0.2],
-            "cotovelo": [0.3, -0.34, 0.1],
-            "mao": [0.018, -0.075, 0.01],
-            "rotacaoMao": [1.5708, 0, 0]
-          },
-          "esquerda": {
-            "ombro": [-0.4, -0.43, 0.17],
-            "cotovelo": [-0.24, -0.3, -0.01],
-            "mao": [-0.025, -0.04, -0.31],
-            "rotacaoMao": [1.5708, 0, 0]
-          }
+          "direita": { "ombro": [0.48, -0.43, 0.2], "cotovelo": [0.3, -0.34, 0.1], "mao": [0.03, -0.09, -0.02], "rotacaoMao": [1.5708, 0, 0] },
+          "esquerda": { "ombro": [-0.4, -0.43, 0.17], "cotovelo": [-0.24, -0.3, -0.04], "mao": [-0.04, -0.045, -0.42], "rotacaoMao": [1.5708, 0, 0] }
         }
       },
-      "cores": {
-        "principal": "#3c413b",
-        "metal": "#202426",
-        "empunhadura": "#4a392b",
-        "detalhe": "#788072"
-      }
+      "cores": { "principal": "#65e572", "metal": "#262d39", "empunhadura": "#111820", "detalhe": "#22d3ee" }
     }
   ]
 }

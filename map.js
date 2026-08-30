@@ -7,7 +7,7 @@ const WALL_THICKNESS = 1;
 /**
  * Cria um mapa de teste simples: chão com grid, 4 paredes no perímetro
  * e algumas caixas espalhadas para testar movimentação e colisão.
- * Retorna { obstacles } — lista de THREE.Box3 usada pelo PlayerController.
+ * Retorna colisores, superfícies atingíveis e o tamanho usado pelo placar de tinta.
  */
 export function createMap(scene) {
   const obstacles = [];
@@ -23,7 +23,7 @@ export function createMap(scene) {
   const sun = new THREE.DirectionalLight(0xffffff, 1.6);
   sun.position.set(30, 45, 15);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.mapSize.set(1024, 1024);
   sun.shadow.camera.left = -45;
   sun.shadow.camera.right = 45;
   sun.shadow.camera.top = 45;
@@ -32,16 +32,20 @@ export function createMap(scene) {
 
   // --- chão ---
   const groundGeo = new THREE.PlaneGeometry(MAP_SIZE, MAP_SIZE);
-  const groundMat = new THREE.MeshStandardMaterial({ color: 0x555b63 });
+  const groundMat = new THREE.MeshStandardMaterial({ color: 0x3f4651, roughness: 0.92 });
   const ground = new THREE.Mesh(groundGeo, groundMat);
   ground.rotation.x = -Math.PI / 2;
   ground.receiveShadow = true;
   ground.userData.surface = true;
+  ground.userData.paintable = true;
   scene.add(ground);
   shootables.push(ground);
 
   const grid = new THREE.GridHelper(MAP_SIZE, MAP_SIZE, 0x9aa5b1, 0x6e7680);
   grid.position.y = 0.01;
+  grid.material.transparent = true;
+  grid.material.opacity = 0.18;
+  grid.material.depthWrite = false;
   scene.add(grid);
 
   // --- paredes do perímetro (também servem de colisão) ---
@@ -54,6 +58,7 @@ export function createMap(scene) {
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     mesh.userData.surface = true;
+    mesh.userData.paintable = true;
     scene.add(mesh);
     obstacles.push(new THREE.Box3().setFromObject(mesh));
     shootables.push(mesh);
@@ -89,7 +94,7 @@ export function createMap(scene) {
     shootables.push(...target.meshes);
   });
 
-  return { obstacles, shootables };
+  return { obstacles, shootables, mapSize: MAP_SIZE };
 }
 
 function createTarget(scene, x, z, index) {

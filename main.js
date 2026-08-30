@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { createMap } from './map.js';
 import { PlayerController } from './player.js';
 import { WeaponSystem } from './weapons.js';
+import { InkSystem } from './ink.js';
 
 const canvas = document.getElementById('game');
 const fpsEl = document.getElementById('fps');
@@ -10,8 +11,8 @@ const overlayMessage = document.getElementById('overlay-message');
 
 async function init() {
   try {
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.75));
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -22,12 +23,19 @@ async function init() {
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.08, 1000);
 
-    const { obstacles, shootables } = createMap(scene);
+    const { obstacles, shootables, mapSize } = createMap(scene);
 
-    const player = new PlayerController(camera, renderer.domElement, obstacles);
+    let player;
+    const ink = new InkSystem(scene, mapSize, () => player?.locked ?? false);
+    player = new PlayerController(
+      camera,
+      renderer.domElement,
+      obstacles,
+      (x, z) => ink.isOwnInkAt(x, z),
+    );
     scene.add(player.object);
 
-    const weapons = new WeaponSystem(camera, scene, shootables, () => player.locked);
+    const weapons = new WeaponSystem(camera, scene, shootables, ink, () => player.locked);
     await weapons.init();
 
     const clock = new THREE.Clock();

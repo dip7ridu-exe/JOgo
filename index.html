@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Protótipo de FPS 3D com cinco armas low-poly, alvos e movimentação em primeira pessoa." />
-  <title>JOgo — Campo de Teste FPS</title>
+  <meta name="description" content="Arena FPS de navegador com movimento por impulso, blasters low-poly e disputa de território com tinta." />
+  <title>JOgo — Arena de Tinta FPS</title>
   <link rel="stylesheet" href="style.css" />
   <script type="importmap">
   {
@@ -24,6 +24,14 @@
   <div id="top-hud">
     <div id="fps">0 FPS</div>
     <div id="score">ALVOS 0</div>
+    <div id="movement-status">0.0 m/s</div>
+  </div>
+
+  <div id="territory-hud" aria-live="polite">
+    <div class="territory-title"><strong>TERRITÓRIO</strong><span id="active-team">TINTA CIANO</span></div>
+    <div class="team-row cyan-team"><span>CIANO</span><div class="team-track"><i id="cyan-bar"></i></div><b id="cyan-percent">0.0%</b></div>
+    <div class="team-row coral-team"><span>CORAL</span><div class="team-track"><i id="coral-bar"></i></div><b id="coral-percent">0.0%</b></div>
+    <small><kbd>T</kbd> troca a equipe para testar a retomada de área</small>
   </div>
 
   <div id="weapon-hud" aria-live="polite">
@@ -37,8 +45,8 @@
 
   <div id="overlay">
     <div id="overlay-box">
-      <span class="eyebrow">JOgo // PROTÓTIPO FPS</span>
-      <h1>Campo de Teste</h1>
+      <span class="eyebrow">JOgo // FPS + TERRITÓRIO</span>
+      <h1>Arena de Tinta</h1>
       <p id="overlay-message">Carregando modelos 3D...</p>
       <ul>
         <li><b>W A S D</b> — mover</li>
@@ -48,7 +56,8 @@
         <li><b>R</b> — recarregar</li>
         <li><b>Espaço</b> — pular</li>
         <li><b>Shift</b> — correr</li>
-        <li><b>Ctrl</b> — agachar</li>
+        <li><b>Ctrl / C</b> — deslizar / impulso na tinta</li>
+        <li><b>T</b> — trocar equipe de teste</li>
         <li><b>Esc</b> — soltar o mouse</li>
       </ul>
       <span class="start-hint">CLIQUE PARA JOGAR</span>

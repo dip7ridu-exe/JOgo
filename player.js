@@ -1,31 +1,37 @@
 import * as THREE from 'three';
 
-// --- Parâmetros de movimentação (ajuste aqui para mudar a "sensação" do jogo) ---
+// Movimento de arena: aceleração, conservação de impulso e slide-hop.
 const GRAVITY = -28;
 const EYE_HEIGHT = 1.7;
-const CROUCH_HEIGHT = 1.0;
+const CROUCH_HEIGHT = 1.03;
 const PLAYER_RADIUS = 0.4;
 
-const WALK_SPEED = 6;
-const SPRINT_SPEED = 10;
-const CROUCH_SPEED = 3;
-const JUMP_SPEED = 8.5;
-const AIR_CONTROL = 0.85; // Krunker/COD permitem controlar a direção no ar
+const WALK_SPEED = 7;
+const SPRINT_SPEED = 11;
+const OWN_INK_SPEED = 13.2;
+const MAX_MOMENTUM = 17;
+const GROUND_ACCELERATION = 10;
+const AIR_ACCELERATION = 1.6;
+const GROUND_FRICTION = 9;
+const SLIDE_FRICTION = 2.15;
+const SLIDE_IMPULSE = 12.5;
+const SLIDE_DURATION = 0.72;
+const JUMP_SPEED = 8.8;
 
 const BASE_FOV = 75;
-const SPRINT_FOV = 82;
+const FAST_FOV = 84;
 const MOUSE_SENSITIVITY = 0.0022;
 
 /**
- * Controlador de câmera + movimentação em primeira pessoa.
- * yawObject = corpo do jogador (gira no eixo Y, é o que colide com o mapa)
- * pitchObject = "pescoço" (gira no eixo X, olha para cima/baixo)
+ * Controlador FPS com colisão circular contra as caixas do mapa.
+ * A velocidade horizontal é persistente: saltar durante o slide mantém o impulso.
  */
 export class PlayerController {
-  constructor(camera, domElement, obstacles) {
+  constructor(camera, domElement, obstacles, isOwnInkAt = null) {
     this.camera = camera;
     this.domElement = domElement;
-    this.obstacles = obstacles; // lista de THREE.Box3 usada para colisão
+    this.obstacles = obstacles;
+    this.isOwnInkAt = isOwnInkAt;
 
     this.yawObject = new THREE.Object3D();
     this.pitchObject = new THREE.Object3D();
@@ -36,14 +42,21 @@ export class PlayerController {
     this.velocity = new THREE.Vector3();
     this.onGround = true;
     this.currentHeight = EYE_HEIGHT;
+    this.sprinting = false;
+    this.sliding = false;
+    this.inkBoost = false;
+    this.speed = 0;
+    this.slideTimer = 0;
+    this.wasCrouching = false;
 
     this.keys = {};
     this.locked = false;
+    this._lastMovementLabel = '';
+    this.movementEl = document.getElementById('movement-status');
 
     this._forward = new THREE.Vector3();
     this._right = new THREE.Vector3();
     this._moveDir = new THREE.Vector3();
-    this._wishDir = new THREE.Vector2();
 
     this._setupEvents();
   }
@@ -79,7 +92,8 @@ export class PlayerController {
       if (overlay) overlay.style.display = this.locked ? 'none' : 'flex';
       if (!this.locked) {
         this.keys = {};
-        if (overlayMessage) overlayMessage.textContent = 'Clique em qualquer lugar para voltar ao teste';
+        this.sliding = false;
+        if (overlayMessage) overlayMessage.textContent = 'Clique em qualquer lugar para voltar à arena';
       }
     });
 
@@ -87,19 +101,19 @@ export class PlayerController {
       if (overlayMessage) overlayMessage.textContent = 'O navegador não permitiu travar o mouse. Clique novamente.';
     });
 
-    document.addEventListener('mousemove', (e) => {
+    document.addEventListener('mousemove', (event) => {
       if (!this.locked) return;
-      this.yawObject.rotation.y -= e.movementX * MOUSE_SENSITIVITY;
-      this.pitchObject.rotation.x -= e.movementY * MOUSE_SENSITIVITY;
+      this.yawObject.rotation.y -= event.movementX * MOUSE_SENSITIVITY;
+      this.pitchObject.rotation.x -= event.movementY * MOUSE_SENSITIVITY;
       const limit = Math.PI / 2 - 0.01;
-      this.pitchObject.rotation.x = Math.max(-limit, Math.min(limit, this.pitchObject.rotation.x));
+      this.pitchObject.rotation.x = THREE.MathUtils.clamp(this.pitchObject.rotation.x, -limit, limit);
     });
 
-    document.addEventListener('keydown', (e) => {
-      this.keys[e.code] = true;
-      if (['Space', 'ControlLeft', 'ControlRight'].includes(e.code)) e.preventDefault();
+    document.addEventListener('keydown', (event) => {
+      this.keys[event.code] = true;
+      if (['Space', 'ControlLeft', 'ControlRight'].includes(event.code)) event.preventDefault();
     });
-    document.addEventListener('keyup', (e) => { this.keys[e.code] = false; });
+    document.addEventListener('keyup', (event) => { this.keys[event.code] = false; });
     window.addEventListener('blur', () => { this.keys = {}; });
   }
 
@@ -107,70 +121,144 @@ export class PlayerController {
     if (!this.locked) return;
 
     const keys = this.keys;
-    const crouching = !!(keys['ControlLeft'] || keys['ControlRight'] || keys['KeyC']);
-    const wantsSprint = !!(keys['ShiftLeft'] || keys['ShiftRight']);
+    const crouching = !!(keys.ControlLeft || keys.ControlRight || keys.KeyC);
+    const crouchPressed = crouching && !this.wasCrouching;
+    const wantsSprint = !!(keys.ShiftLeft || keys.ShiftRight);
+    const wantsJump = !!keys.Space;
 
-    // direção desejada em espaço local (x = strafe, z = frente/trás)
-    this._wishDir.set(0, 0);
-    if (keys['KeyW']) this._wishDir.y -= 1;
-    if (keys['KeyS']) this._wishDir.y += 1;
-    if (keys['KeyA']) this._wishDir.x -= 1;
-    if (keys['KeyD']) this._wishDir.x += 1;
-    const moving = this._wishDir.lengthSq() > 0;
-    if (moving) this._wishDir.normalize();
-
-    const sprinting = wantsSprint && keys['KeyW'] && !crouching;
-
-    let speed = WALK_SPEED;
-    if (crouching) speed = CROUCH_SPEED;
-    else if (sprinting) speed = SPRINT_SPEED;
-    if (!this.onGround) speed *= AIR_CONTROL; // ar dá um pouco menos de controle
+    const inputX = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
+    const inputZ = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0);
 
     this._forward.set(0, 0, -1).applyQuaternion(this.yawObject.quaternion);
+    this._forward.y = 0;
+    this._forward.normalize();
     this._right.set(1, 0, 0).applyQuaternion(this.yawObject.quaternion);
+    this._right.y = 0;
+    this._right.normalize();
 
-    this._moveDir.set(0, 0, 0);
-    this._moveDir.addScaledVector(this._forward, -this._wishDir.y);
-    this._moveDir.addScaledVector(this._right, this._wishDir.x);
-    if (this._moveDir.lengthSq() > 0) this._moveDir.normalize();
+    this._moveDir.set(0, 0, 0)
+      .addScaledVector(this._forward, inputZ)
+      .addScaledVector(this._right, inputX);
+    if (this._moveDir.lengthSq() > 1) this._moveDir.normalize();
 
-    this._tryMove(this._moveDir.x * speed * delta, this._moveDir.z * speed * delta);
+    this.speed = Math.hypot(this.velocity.x, this.velocity.z);
+    this.inkBoost = Boolean(crouching && this.isOwnInkAt?.(this.yawObject.position.x, this.yawObject.position.z));
+    this.sprinting = wantsSprint && inputZ > 0 && !crouching;
 
-    // pulo + gravidade
-    if (keys['Space'] && this.onGround) {
+    if (crouchPressed && this.onGround && this.speed >= WALK_SPEED * 0.82) {
+      this.sliding = true;
+      this.slideTimer = SLIDE_DURATION;
+      const slideDirection = this.speed > 0.1
+        ? new THREE.Vector3(this.velocity.x, 0, this.velocity.z).normalize()
+        : this._forward;
+      if (this.speed < SLIDE_IMPULSE) {
+        this.velocity.x = slideDirection.x * SLIDE_IMPULSE;
+        this.velocity.z = slideDirection.z * SLIDE_IMPULSE;
+      }
+    }
+
+    if (this.sliding) {
+      this.slideTimer -= delta;
+      if ((!crouching && this.slideTimer < SLIDE_DURATION - 0.12) || this.slideTimer <= 0 || this.speed < 4.5) {
+        this.sliding = false;
+      }
+    }
+
+    // Pular antes do atrito preserva o impulso de um slide-hop/bunny-hop.
+    if (wantsJump && this.onGround) {
       this.velocity.y = JUMP_SPEED;
       this.onGround = false;
+      this.sliding = false;
     }
+
+    let targetSpeed = this.sprinting ? SPRINT_SPEED : WALK_SPEED;
+    if (this.inkBoost) targetSpeed = OWN_INK_SPEED;
+    if (this.sliding) targetSpeed = Math.max(targetSpeed, SLIDE_IMPULSE);
+
+    if (this.onGround) {
+      this._applyFriction(delta, this.sliding ? SLIDE_FRICTION : GROUND_FRICTION);
+      this._accelerate(this._moveDir, targetSpeed, this.sliding ? 3.5 : GROUND_ACCELERATION, delta);
+    } else {
+      this._accelerate(this._moveDir, targetSpeed, AIR_ACCELERATION, delta);
+    }
+
+    const horizontalSpeed = Math.hypot(this.velocity.x, this.velocity.z);
+    if (horizontalSpeed > MAX_MOMENTUM) {
+      const scale = MAX_MOMENTUM / horizontalSpeed;
+      this.velocity.x *= scale;
+      this.velocity.z *= scale;
+    }
+
+    this._tryMove(this.velocity.x * delta, this.velocity.z * delta);
+
     this.velocity.y += GRAVITY * delta;
     this.yawObject.position.y += this.velocity.y * delta;
 
-    const targetHeight = crouching ? CROUCH_HEIGHT : EYE_HEIGHT;
-    this.currentHeight = THREE.MathUtils.lerp(this.currentHeight, targetHeight, 10 * delta);
-
+    const targetHeight = (crouching || this.sliding) ? CROUCH_HEIGHT : EYE_HEIGHT;
+    this.currentHeight = THREE.MathUtils.lerp(this.currentHeight, targetHeight, Math.min(1, 12 * delta));
     if (this.yawObject.position.y <= this.currentHeight) {
       this.yawObject.position.y = this.currentHeight;
       this.velocity.y = 0;
       this.onGround = true;
     }
 
-    // FOV kick ao correr (efeito clássico de COD/Krunker)
-    const targetFov = sprinting && moving ? SPRINT_FOV : BASE_FOV;
-    this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, targetFov, 8 * delta);
+    this.speed = Math.hypot(this.velocity.x, this.velocity.z);
+    const speedRatio = THREE.MathUtils.clamp((this.speed - WALK_SPEED) / (MAX_MOMENTUM - WALK_SPEED), 0, 1);
+    const targetFov = THREE.MathUtils.lerp(BASE_FOV, FAST_FOV, speedRatio);
+    this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, targetFov, Math.min(1, 8 * delta));
     this.camera.updateProjectionMatrix();
+
+    const lean = this.sliding ? -inputX * 0.07 : -inputX * Math.min(0.035, this.speed * 0.003);
+    this.pitchObject.rotation.z = THREE.MathUtils.lerp(this.pitchObject.rotation.z, lean, Math.min(1, 10 * delta));
+
+    this._updateMovementHud();
+    this.wasCrouching = crouching;
+  }
+
+  _accelerate(direction, targetSpeed, acceleration, delta) {
+    if (direction.lengthSq() === 0) return;
+    const currentSpeed = this.velocity.x * direction.x + this.velocity.z * direction.z;
+    const speedToAdd = targetSpeed - currentSpeed;
+    if (speedToAdd <= 0) return;
+    const accelerationStep = Math.min(acceleration * targetSpeed * delta, speedToAdd);
+    this.velocity.x += direction.x * accelerationStep;
+    this.velocity.z += direction.z * accelerationStep;
+  }
+
+  _applyFriction(delta, friction) {
+    const speed = Math.hypot(this.velocity.x, this.velocity.z);
+    if (speed < 0.001) return;
+    const nextSpeed = Math.max(0, speed - Math.max(speed, 2.5) * friction * delta);
+    const scale = nextSpeed / speed;
+    this.velocity.x *= scale;
+    this.velocity.z *= scale;
+  }
+
+  _updateMovementHud() {
+    if (!this.movementEl) return;
+    let label = `${this.speed.toFixed(1)} m/s`;
+    if (!this.onGround && this.speed > SPRINT_SPEED) label = `SLIDE-HOP · ${label}`;
+    else if (this.sliding) label = `SLIDE · ${label}`;
+    else if (this.inkBoost) label = `IMPULSO NA TINTA · ${label}`;
+    else if (this.sprinting) label = `CORRIDA · ${label}`;
+    if (label !== this._lastMovementLabel) {
+      this.movementEl.textContent = label;
+      this._lastMovementLabel = label;
+    }
   }
 
   _tryMove(dx, dz) {
-    const pos = this.yawObject.position;
+    const position = this.yawObject.position;
 
-    const nextX = pos.x + dx;
-    if (!this._collides(nextX, pos.z)) pos.x = nextX;
+    const nextX = position.x + dx;
+    if (!this._collides(nextX, position.z)) position.x = nextX;
+    else this.velocity.x = 0;
 
-    const nextZ = pos.z + dz;
-    if (!this._collides(pos.x, nextZ)) pos.z = nextZ;
+    const nextZ = position.z + dz;
+    if (!this._collides(position.x, nextZ)) position.z = nextZ;
+    else this.velocity.z = 0;
   }
 
-  // colisão simples: trata o jogador como um círculo de raio PLAYER_RADIUS
-  // contra caixas (Box3) do mapa — dá para "deslizar" nas paredes
   _collides(x, z) {
     for (const box of this.obstacles) {
       const closestX = Math.max(box.min.x, Math.min(x, box.max.x));

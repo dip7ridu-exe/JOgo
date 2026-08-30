@@ -2,9 +2,13 @@
   color-scheme: dark;
   --accent: #ff9d45;
   --cyan: #6de7ff;
+  --coral: #ff4f87;
+  --team: #22d3ee;
   --panel: rgba(12, 17, 23, 0.76);
   --line: rgba(255, 255, 255, 0.14);
 }
+
+body[data-team="1"] { --team: var(--coral); }
 
 * {
   margin: 0;
@@ -110,7 +114,8 @@ canvas {
 }
 
 #fps,
-#score {
+#score,
+#movement-status {
   min-width: 84px;
   padding: 8px 10px;
   border: 1px solid var(--line);
@@ -126,6 +131,89 @@ canvas {
 
 #score { color: var(--cyan); }
 
+#movement-status {
+  min-width: 126px;
+  color: var(--team);
+}
+
+#territory-hud {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  z-index: 10;
+  width: min(370px, calc(100vw - 32px));
+  padding: 11px 13px 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: #fff;
+  background: var(--panel);
+  transform: translateX(-50%);
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+
+.territory-title,
+.team-row {
+  display: flex;
+  align-items: center;
+}
+
+.territory-title {
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font: 800 10px/1 "Consolas", monospace;
+  letter-spacing: 0.1em;
+}
+
+#active-team { color: var(--team); }
+
+.team-row {
+  gap: 8px;
+  margin-top: 5px;
+  font: 700 9px/1 "Consolas", monospace;
+}
+
+.team-row > span { width: 38px; }
+.team-row > b { width: 37px; text-align: right; }
+
+.team-track {
+  flex: 1;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.team-track i {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  transition: width 140ms ease;
+}
+
+.cyan-team { color: var(--cyan); }
+.coral-team { color: var(--coral); }
+.cyan-team i { background: var(--cyan); }
+.coral-team i { background: var(--coral); }
+
+#territory-hud small {
+  display: block;
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.42);
+  font: 600 8px/1 "Segoe UI", sans-serif;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+kbd {
+  padding: 1px 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+  color: #fff;
+  font-family: "Consolas", monospace;
+}
+
 #weapon-hud {
   position: fixed;
   right: 28px;
@@ -133,7 +221,7 @@ canvas {
   z-index: 10;
   min-width: 190px;
   padding: 14px 16px 12px;
-  border-right: 3px solid var(--accent);
+  border-right: 3px solid var(--team);
   color: #fff;
   background: linear-gradient(90deg, transparent, var(--panel) 35%);
   text-align: right;
@@ -167,7 +255,7 @@ canvas {
 }
 
 #ammo strong {
-  color: var(--accent);
+  color: var(--team);
   font-size: 36px;
   line-height: 0.9;
 }
@@ -222,9 +310,9 @@ canvas {
 }
 
 .weapon-slot.active {
-  border-color: var(--accent);
+  border-color: var(--team);
   color: #fff;
-  box-shadow: 0 0 15px rgba(255, 157, 69, 0.18);
+  box-shadow: 0 0 15px color-mix(in srgb, var(--team) 32%, transparent);
   transform: translateY(-4px);
 }
 
@@ -326,6 +414,13 @@ canvas {
 
 @media (max-width: 760px) {
   #weapon-slots { display: none; }
+
+  #territory-hud {
+    top: 58px;
+    width: calc(100vw - 28px);
+  }
+
+  #movement-status { display: none; }
 
   #weapon-hud {
     right: 14px;

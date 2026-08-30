@@ -154,7 +154,8 @@ function registerAnimatedParts(model) {
   const action = model.getObjectByName('Slide')
     ?? model.getObjectByName('Bolt')
     ?? model.getObjectByName('Fore_Stock')
-    ?? model.getObjectByName('Charging_Handle');
+    ?? model.getObjectByName('Charging_Handle')
+    ?? model.userData.weaponVisual;
 
   model.userData.animatedParts = {
     magazine: magazine ? { object: magazine, base: magazine.position.clone() } : null,
@@ -256,10 +257,16 @@ function createFallbackModel(definition) {
 }
 
 export class WeaponSystem {
-  constructor(camera, scene, shootables, isPlayerLocked) {
+  constructor(camera, scene, shootables, inkSystem, isPlayerLocked) {
+    // Mantém compatibilidade com a assinatura anterior nos testes/embeds.
+    if (typeof inkSystem === 'function') {
+      isPlayerLocked = inkSystem;
+      inkSystem = null;
+    }
     this.camera = camera;
     this.scene = scene;
     this.shootables = shootables;
+    this.inkSystem = inkSystem;
     this.isPlayerLocked = isPlayerLocked;
     this.loader = new GLTFLoader();
 
@@ -358,13 +365,14 @@ export class WeaponSystem {
       });
 
       model.add(visual);
+      model.userData.weaponVisual = visual;
       addMuzzle(model, config.muzzle ?? [0, 0, -0.8]);
       addFirstPersonArms(model, config);
       registerAnimatedParts(model);
       model.userData.asset = {
         formato: 'glb',
         arquivo: config.arquivo,
-        autor: config.autor ?? '3dmodelscc0',
+        autor: config.autor ?? 'Kenney',
         licenca: config.licenca ?? 'CC0 1.0',
       };
       model.visible = false;
@@ -471,7 +479,7 @@ export class WeaponSystem {
     this.fireHeld = false;
     this.reloadRemaining = weapon.tempoRecarga;
     this.reloadDuration = weapon.tempoRecarga;
-    this.reloadEl.textContent = `RECARREGANDO ${this.reloadRemaining.toFixed(1)}s`;
+    this.reloadEl.textContent = `REABASTECENDO TINTA ${this.reloadRemaining.toFixed(1)}s`;
   }
 
   update(delta, player) {
@@ -492,7 +500,7 @@ export class WeaponSystem {
         this.reloadEl.textContent = '';
         this._updateHud();
       } else {
-        this.reloadEl.textContent = `RECARREGANDO ${this.reloadRemaining.toFixed(1)}s`;
+        this.reloadEl.textContent = `REABASTECENDO TINTA ${this.reloadRemaining.toFixed(1)}s`;
       }
     }
 
@@ -540,16 +548,17 @@ export class WeaponSystem {
       if (this.flashRemaining <= 0) this.models[this.currentIndex].userData.flash.visible = false;
     }
 
-    const moving = player.locked && ['KeyW', 'KeyA', 'KeyS', 'KeyD'].some((key) => player.keys[key]);
-    const sprinting = moving && player.keys.KeyW && (player.keys.ShiftLeft || player.keys.ShiftRight);
+    const moving = player.locked && player.speed > 0.6;
+    const sprinting = moving && player.sprinting;
+    const sliding = moving && player.sliding;
     this.bobTime += delta * (sprinting ? 13 : 8);
-    const bobStrength = moving && player.onGround ? (sprinting ? 0.018 : 0.009) : 0;
+    const bobStrength = moving && player.onGround && !sliding ? (sprinting ? 0.018 : 0.009) : 0;
     const bobX = Math.cos(this.bobTime) * bobStrength;
     const bobY = Math.abs(Math.sin(this.bobTime)) * bobStrength;
     const breatheY = Math.sin(this.idleTime * 1.7) * 0.0035;
 
     this.recoil = THREE.MathUtils.lerp(this.recoil, 0, Math.min(1, delta * 13));
-    const sprintDrop = sprinting ? 0.09 : 0;
+    const sprintDrop = sprinting ? 0.09 : (sliding ? 0.12 : 0);
     const equipDrop = (1 - equipEase) * 0.34;
     const targetX = BASE_POSITION.x + bobX + reloadArc * 0.055;
     const targetY = BASE_POSITION.y - bobY - sprintDrop + breatheY - equipDrop - reloadArc * 0.09;
@@ -589,6 +598,8 @@ export class WeaponSystem {
     this.fireAnimation = 1;
 
     const model = this.models[this.currentIndex];
+    const inkColor = this.inkSystem?.getActiveColor();
+    if (inkColor) model.userData.flash.material.color.copy(inkColor);
     model.userData.flash.visible = true;
     model.userData.flash.rotation.z = Math.random() * Math.PI;
     this.flashRemaining = 0.045;
@@ -625,6 +636,8 @@ export class WeaponSystem {
         : this.hitPoint.copy(this.worldDirection).multiplyScalar(70).add(this.worldOrigin);
       if (pellet === 0) tracerEnd = end.clone();
 
+      if (hit) this.inkSystem?.paint(hit, weapon.raioTinta ?? 1);
+
       if (hit?.object.userData.target) {
         const result = hit.object.userData.target.takeDamage(damagePerPellet, hit.object.userData.hitZone);
         this._showHitmarker(result.killed);
@@ -635,16 +648,16 @@ export class WeaponSystem {
       }
     }
 
-    if (tracerEnd) this._createTracer(model.userData.muzzle, tracerEnd);
+    if (tracerEnd) this._createTracer(model.userData.muzzle, tracerEnd, inkColor);
     this._updateHud();
   }
 
-  _createTracer(muzzle, endPoint) {
+  _createTracer(muzzle, endPoint, color) {
     const startPoint = muzzle.getWorldPosition(new THREE.Vector3());
     const geometry = new THREE.BufferGeometry().setFromPoints([startPoint, endPoint]);
     const tracer = new THREE.Line(
       geometry,
-      new THREE.LineBasicMaterial({ color: 0xffd27a, transparent: true, opacity: 0.72 }),
+      new THREE.LineBasicMaterial({ color: color ?? 0xffd27a, transparent: true, opacity: 0.78 }),
     );
     this.scene.add(tracer);
 
@@ -670,6 +683,6 @@ export class WeaponSystem {
 
     this.weaponNameEl.textContent = weapon.nome;
     this.weaponCategoryEl.textContent = weapon.categoria.replaceAll('_', ' ').toUpperCase();
-    this.ammoEl.innerHTML = `<strong>${String(this.ammo[this.currentIndex]).padStart(2, '0')}</strong><span>/ ∞</span>`;
+    this.ammoEl.innerHTML = `<strong>${String(this.ammo[this.currentIndex]).padStart(2, '0')}</strong><span>/ TANQUE</span>`;
   }
 }
