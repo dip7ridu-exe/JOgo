@@ -84,19 +84,19 @@ export function createMap(scene) {
   addInstances(scene, hedgeInstances, new THREE.BoxGeometry(1, 1, 1), materials.hedge, 'vegetacao-instanciada');
   addInstances(scene, windowInstances, new THREE.BoxGeometry(1, 1, 0.04), materials.window, 'janelas-instanciadas');
 
-  const targetPositions = [
-    [0, -16], [-7.5, -7.5], [8.5, -9], [-4, 8], [5.5, 8], [-25, 16], [25, -18],
-  ];
-  targetPositions.forEach(([x, z], index) => {
-    const target = createTarget(scene, x, z, index);
-    shootables.push(...target.meshes);
-  });
-
   return {
     obstacles,
     shootables,
     mapSize: MAP_SIZE,
     spawnPosition: new THREE.Vector3(0, 1.7, 27.8),
+    botSpawnPosition: new THREE.Vector3(0, 0, -27.4),
+    botWaypoints: [
+      [0, -27.4], [0, -25.5], [23, -25.5], [26.75, -25.5], [26.75, -20.5],
+      [26.75, 0], [26.75, 20.5], [26.75, 25.5], [4, 25.5], [4, 8], [0, 8],
+      [0, 25.5], [-23, 25.5], [-26.75, 25.5], [-26.75, 20.5], [-26.75, 0],
+      [-26.75, -20.5], [-26.75, -25.5], [-6, -25.5], [-6, -7], [4, -7],
+      [4, -25.5], [0, -25.5],
+    ].map(([x, z]) => new THREE.Vector3(x, 0, z)),
   };
 }
 
@@ -298,61 +298,4 @@ function createPavementTexture() {
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 2;
   return texture;
-}
-
-function createTarget(scene, x, z, index) {
-  const group = new THREE.Group();
-  group.position.set(x, 0, z);
-  group.rotation.y = Math.atan2(-x, 14 - z);
-  scene.add(group);
-
-  const accentColors = [0xff5d4a, 0x5de1ff, 0xffc857, 0xb889ff, 0x76e36d];
-  const bodyMaterial = new THREE.MeshStandardMaterial({ color: accentColors[index % accentColors.length], roughness: 0.55, metalness: 0.15, emissive: 0x000000 });
-  const darkMaterial = new THREE.MeshStandardMaterial({ color: 0x1c232c, roughness: 0.72, emissive: 0x000000 });
-  const state = {
-    group,
-    meshes: [],
-    health: 100,
-    active: true,
-    flashTimer: null,
-    takeDamage(amount, hitZone) {
-      if (!this.active) return { killed: false, damage: 0 };
-      const damage = hitZone === 'head' ? amount * 1.6 : amount;
-      this.health -= damage;
-      for (const mesh of this.meshes) mesh.material.emissive.setHex(0xffffff);
-      clearTimeout(this.flashTimer);
-      this.flashTimer = setTimeout(() => {
-        for (const mesh of this.meshes) mesh.material.emissive.setHex(0x000000);
-      }, 65);
-      if (this.health > 0) return { killed: false, damage };
-      this.active = false;
-      this.group.visible = false;
-      setTimeout(() => {
-        this.health = 100;
-        this.active = true;
-        this.group.visible = true;
-      }, 1500);
-      return { killed: true, damage };
-    },
-  };
-
-  function addPart(geometry, meshMaterial, position, hitZone = 'body') {
-    const mesh = new THREE.Mesh(geometry, meshMaterial);
-    mesh.position.set(...position);
-    // Alvos somem ao serem abatidos; sem sombra dinamica evitamos ghost shadows
-    // enquanto o mapa reutiliza o shadow map estatico.
-    mesh.castShadow = false;
-    mesh.receiveShadow = true;
-    mesh.userData.target = state;
-    mesh.userData.hitZone = hitZone;
-    group.add(mesh);
-    state.meshes.push(mesh);
-  }
-
-  addPart(new THREE.BoxGeometry(0.9, 1.15, 0.28), bodyMaterial, [0, 1.35, 0]);
-  addPart(new THREE.SphereGeometry(0.3, 12, 8), bodyMaterial, [0, 2.2, 0], 'head');
-  addPart(new THREE.BoxGeometry(0.14, 0.75, 0.14), darkMaterial, [-0.24, 0.45, 0]);
-  addPart(new THREE.BoxGeometry(0.14, 0.75, 0.14), darkMaterial, [0.24, 0.45, 0]);
-  addPart(new THREE.CylinderGeometry(0.5, 0.7, 0.16, 12), darkMaterial, [0, 0.08, 0]);
-  return state;
 }

@@ -43,7 +43,8 @@ export class PlayerController {
     this.pitchObject = new THREE.Object3D();
     this.pitchObject.add(camera);
     this.yawObject.add(this.pitchObject);
-    this.yawObject.position.copy(spawnPosition ?? new THREE.Vector3(0, EYE_HEIGHT, 27));
+    this.spawnPosition = (spawnPosition ?? new THREE.Vector3(0, EYE_HEIGHT, 27)).clone();
+    this.yawObject.position.copy(this.spawnPosition);
     this.yawObject.position.y = EYE_HEIGHT;
 
     this.velocity = new THREE.Vector3();
@@ -59,6 +60,14 @@ export class PlayerController {
     this.inkBoost = false;
     this.speed = 0;
     this.aiming = false;
+    this.aimFov = ADS_FOV;
+    this.aimSensitivityFactor = 0.68;
+    this.maxHealth = 100;
+    this.health = this.maxHealth;
+    this.alive = true;
+    this.respawnRemaining = 0;
+    this.damageImmunity = 0;
+    this.onDeath = null;
     this.slideTimer = 0;
     this.wasCrouching = false;
     this.wasOnGround = true;
@@ -68,12 +77,16 @@ export class PlayerController {
     this.locked = false;
     this._lastMovementLabel = '';
     this.movementEl = document.getElementById('movement-status');
+    this.healthValueEl = document.querySelector('.health-value strong');
+    this.healthPips = [...document.querySelectorAll('.health-pips i')];
+    this.damageVignetteEl = document.getElementById('damage-vignette');
 
     this._forward = new THREE.Vector3();
     this._right = new THREE.Vector3();
     this._moveDir = new THREE.Vector3();
 
     this._setupEvents();
+    this._updateHealthHud();
   }
 
   get object() {
@@ -118,7 +131,7 @@ export class PlayerController {
 
     document.addEventListener('mousemove', (event) => {
       if (!this.locked) return;
-      const sensitivity = MOUSE_SENSITIVITY * (this.aiming ? 0.68 : 1);
+      const sensitivity = MOUSE_SENSITIVITY * (this.aiming ? this.aimSensitivityFactor : 1);
       this.yawObject.rotation.y -= event.movementX * sensitivity;
       this.pitchObject.rotation.x -= event.movementY * sensitivity;
       const limit = Math.PI / 2 - 0.01;
@@ -139,6 +152,12 @@ export class PlayerController {
   }
 
   update(delta) {
+    this.damageImmunity = Math.max(0, this.damageImmunity - delta);
+    if (!this.alive) {
+      this.respawnRemaining -= delta;
+      if (this.respawnRemaining <= 0) this._respawn();
+      return;
+    }
     if (!this.locked) return;
 
     const keys = this.keys;
@@ -249,7 +268,7 @@ export class PlayerController {
     this.speed = Math.hypot(this.velocity.x, this.velocity.z);
     const speedRatio = THREE.MathUtils.clamp((this.speed - WALK_SPEED) / (MAX_MOMENTUM - WALK_SPEED), 0, 1);
     const movingFov = THREE.MathUtils.lerp(BASE_FOV, FAST_FOV, speedRatio);
-    const targetFov = this.aiming ? ADS_FOV : movingFov;
+    const targetFov = this.aiming ? this.aimFov : movingFov;
     this.camera.fov = THREE.MathUtils.lerp(this.camera.fov, targetFov, Math.min(1, 8 * delta));
     this.camera.updateProjectionMatrix();
 
@@ -267,6 +286,51 @@ export class PlayerController {
     this.tacticalRemaining = 0;
     this.tacticalSprinting = false;
     this.tacticalCooldown = Math.max(this.tacticalCooldown, TACTICAL_SPRINT_RECOVERY);
+  }
+
+  setOnDeath(callback) {
+    this.onDeath = callback;
+  }
+
+  takeDamage(amount, source = 'BOT') {
+    if (!this.alive || this.damageImmunity > 0 || !this.locked) return false;
+    this.health = Math.max(0, this.health - Math.max(0, amount));
+    this._updateHealthHud();
+    this.damageVignetteEl?.classList.remove('hit');
+    void this.damageVignetteEl?.offsetWidth;
+    this.damageVignetteEl?.classList.add('hit');
+    clearTimeout(this.damageTimer);
+    this.damageTimer = setTimeout(() => this.damageVignetteEl?.classList.remove('hit'), 230);
+    if (this.health > 0) return true;
+
+    this.alive = false;
+    this.respawnRemaining = 1.15;
+    this.keys = {};
+    this.velocity.set(0, 0, 0);
+    this.aiming = false;
+    this.sliding = false;
+    this.cancelTacticalSprint();
+    document.body.classList.add('player-down');
+    this.onDeath?.(source);
+    return true;
+  }
+
+  _respawn() {
+    this.alive = true;
+    this.health = this.maxHealth;
+    this.damageImmunity = 1.2;
+    this.yawObject.position.copy(this.spawnPosition);
+    this.yawObject.position.y = EYE_HEIGHT;
+    this.velocity.set(0, 0, 0);
+    this.pitchObject.rotation.set(0, 0, 0);
+    document.body.classList.remove('player-down');
+    this._updateHealthHud();
+  }
+
+  _updateHealthHud() {
+    if (this.healthValueEl) this.healthValueEl.textContent = String(Math.ceil(this.health));
+    const filled = Math.ceil((this.health / this.maxHealth) * this.healthPips.length);
+    this.healthPips.forEach((pip, index) => pip.classList.toggle('lost', index >= filled));
   }
 
   _updateFootsteps(delta) {

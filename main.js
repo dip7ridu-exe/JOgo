@@ -4,6 +4,8 @@ import { PlayerController } from './player.js';
 import { WeaponSystem } from './weapons.js';
 import { InkSystem } from './ink.js';
 import { GameAudio } from './audio.js';
+import { TerritoryBot } from './bot.js';
+import { MatchController } from './match.js';
 
 const canvas = document.getElementById('game');
 const fpsEl = document.getElementById('fps');
@@ -26,7 +28,14 @@ async function init() {
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.08, 1000);
 
-    const { obstacles, shootables, mapSize, spawnPosition } = createMap(scene);
+    const {
+      obstacles,
+      shootables,
+      mapSize,
+      spawnPosition,
+      botSpawnPosition,
+      botWaypoints,
+    } = createMap(scene);
     const audio = new GameAudio();
     audio.bindUnlock(canvas, overlay);
 
@@ -44,6 +53,17 @@ async function init() {
 
     const weapons = new WeaponSystem(camera, scene, shootables, ink, () => player.locked, audio);
     await weapons.init();
+    const bot = new TerritoryBot({
+      scene,
+      shootables,
+      ink,
+      player,
+      obstacles,
+      spawnPosition: botSpawnPosition,
+      waypoints: botWaypoints,
+      audio,
+    });
+    const match = new MatchController({ ink, player, bot, weapons });
 
     const clock = new THREE.Clock();
     let frames = 0;
@@ -57,7 +77,9 @@ async function init() {
 
       const delta = Math.min(clock.getDelta(), 0.05);
       player.update(delta);
+      bot.update(delta);
       weapons.update(delta, player);
+      match.update(delta);
       renderer.render(scene, camera);
       if (firstFrame) {
         // O mapa e estatico: a sombra pode ser reaproveitada nos quadros seguintes.

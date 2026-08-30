@@ -17,23 +17,36 @@
 </head>
 <body>
   <canvas id="game"></canvas>
+  <div id="damage-vignette" aria-hidden="true"></div>
 
   <div id="crosshair" aria-hidden="true"></div>
   <div id="hitmarker" aria-hidden="true"></div>
+  <div id="scope-overlay" aria-hidden="true">
+    <div class="scope-lens">
+      <i class="reticle-horizontal"></i>
+      <i class="reticle-vertical"></i>
+      <b class="reticle-center"></b>
+      <span class="scope-range">4× · PRISMA</span>
+    </div>
+  </div>
 
   <div id="top-hud">
     <div id="fps">0 FPS</div>
-    <div id="score">ALVOS 0</div>
+    <div id="score">ABATES 0</div>
     <div id="movement-status">0.0 m/s</div>
     <div id="audio-status">SOM CLIQUE PARA ATIVAR · M</div>
   </div>
 
   <div id="territory-hud" aria-live="polite">
     <div class="territory-title"><strong>TERRITÓRIO</strong><span id="active-team">TIME AZUL</span></div>
+    <div class="match-meta"><b id="match-goal">META 10%</b><strong id="match-time">1:30</strong></div>
     <div class="team-row blue-team"><span>AZUL</span><div class="team-track"><i id="blue-bar"></i></div><b id="blue-percent">0.0%</b></div>
-    <div class="team-row pink-team"><span>ROSA</span><div class="team-track"><i id="pink-bar"></i></div><b id="pink-percent">0.0%</b></div>
-    <small><kbd>T</kbd> troca a equipe para testar a retomada de área</small>
+    <div class="team-row pink-team"><span>BOT</span><div class="team-track"><i id="pink-bar"></i></div><b id="pink-percent">0.0%</b></div>
+    <div id="bot-card"><span id="bot-status">BOT ROSA · 100 HP</span><i><b id="bot-health"></b></i></div>
+    <small>PRIMEIRO A 10% VENCE · SER ABATIDO TRANSFERE PARTE DA SUA ÁREA</small>
   </div>
+
+  <div id="match-alert" role="status"></div>
 
   <div id="team-hud" aria-live="polite">
     <div class="pixel-avatar" aria-hidden="true"><i></i><b></b><span></span></div>
@@ -73,11 +86,21 @@
         <li><b>Shift</b> — correr</li>
         <li><b>Shift 2×</b> — corrida tática com arma elevada</li>
         <li><b>Ctrl / C</b> — deslizar / impulso na tinta</li>
-        <li><b>T</b> — trocar equipe de teste</li>
         <li><b>M</b> — ativar/desativar os sons</li>
         <li><b>Esc</b> — soltar o mouse</li>
       </ul>
+      <p class="objective-hint">Pinte 10% do mapa antes do Bot Rosa. Derrube-o para atrasar sua pintura.</p>
       <span class="start-hint">CLIQUE PARA JOGAR</span>
+    </div>
+  </div>
+
+  <div id="match-result" hidden>
+    <div class="result-card">
+      <span class="eyebrow">RESULTADO DA DISPUTA</span>
+      <h2 id="result-title">VITÓRIA!</h2>
+      <p id="result-reason"></p>
+      <div id="result-score"></div>
+      <button id="restart-match" type="button">JOGAR NOVAMENTE</button>
     </div>
   </div>
 

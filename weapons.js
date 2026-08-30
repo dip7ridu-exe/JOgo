@@ -7,12 +7,12 @@ const ADS_ROTATION = new THREE.Euler(-0.008, 0, 0);
 const CENTER = new THREE.Vector2(0, 0);
 const UP = new THREE.Vector3(0, 1, 0);
 
-const ADS_POSITIONS = {
-  pistola: new THREE.Vector3(0, -0.115, -0.43),
-  submetralhadora: new THREE.Vector3(0, -0.12, -0.45),
-  rifle_de_assalto: new THREE.Vector3(0, -0.125, -0.47),
-  espingarda: new THREE.Vector3(0, -0.135, -0.48),
-  sniper: new THREE.Vector3(0, -0.13, -0.59),
+const SIGHT_PROFILES = {
+  pistola: { lineY: 0.205, rearZ: 0.08, frontZ: -0.46, adsZ: -0.62, fov: 62, sensitivity: 0.68 },
+  submetralhadora: { lineY: 0.255, rearZ: 0.1, frontZ: -0.58, adsZ: -0.72, fov: 61, sensitivity: 0.66 },
+  rifle_de_assalto: { lineY: 0.265, rearZ: 0.1, frontZ: -0.7, adsZ: -0.79, fov: 59, sensitivity: 0.62 },
+  espingarda: { lineY: 0.245, rearZ: 0.12, frontZ: -0.6, adsZ: -0.86, fov: 63, sensitivity: 0.7 },
+  sniper: { lineY: 0.285, rearZ: 0.08, frontZ: -0.62, adsZ: -0.92, fov: 44, sensitivity: 0.42 },
 };
 
 const CATEGORY_LABELS = {
@@ -83,21 +83,29 @@ function addMuzzle(group, position) {
   anchor.name = 'muzzle';
   anchor.position.set(...position);
 
-  const flashMaterial = new THREE.MeshBasicMaterial({
-    color: 0xffd27a,
-    transparent: true,
-    opacity: 0.95,
-    depthTest: false,
-    depthWrite: false,
-  });
-  const flash = new THREE.Mesh(new THREE.OctahedronGeometry(0.075, 0), flashMaterial);
-  flash.scale.set(0.7, 0.7, 1.8);
+  const flash = new THREE.Group();
+  const flashMaterials = [
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.98, depthTest: false, depthWrite: false }),
+    new THREE.MeshBasicMaterial({ color: 0xffd057, transparent: true, opacity: 0.92, depthTest: false, depthWrite: false }),
+    new THREE.MeshBasicMaterial({ color: 0xff783d, transparent: true, opacity: 0.82, depthTest: false, depthWrite: false }),
+  ];
+  const core = new THREE.Mesh(new THREE.ConeGeometry(0.038, 0.22, 5), flashMaterials[0]);
+  core.rotation.x = -Math.PI / 2;
+  core.position.z = -0.11;
+  const flame = new THREE.Mesh(new THREE.ConeGeometry(0.072, 0.4, 6), flashMaterials[1]);
+  flame.rotation.x = -Math.PI / 2;
+  flame.position.z = -0.2;
+  const sideFlame = new THREE.Mesh(new THREE.TetrahedronGeometry(0.09, 0), flashMaterials[2]);
+  sideFlame.scale.set(1.45, 0.55, 2.15);
+  sideFlame.position.z = -0.12;
+  flash.add(core, flame, sideFlame);
   flash.visible = false;
-  flash.renderOrder = 30;
+  flash.traverse((child) => { if (child.isMesh) child.renderOrder = 30; });
   anchor.add(flash);
   group.add(anchor);
   group.userData.muzzle = anchor;
   group.userData.flash = flash;
+  group.userData.flashMaterials = flashMaterials;
   return anchor;
 }
 
@@ -120,6 +128,52 @@ function addInkIndicator(group) {
   indicator.name = 'reservatorio-tinta-do-time';
   indicator.renderOrder = 22;
   group.userData.inkIndicator = indicator;
+}
+
+function addWeaponSights(model, weapon) {
+  const profile = SIGHT_PROFILES[weapon.categoria] ?? SIGHT_PROFILES.pistola;
+  const sights = new THREE.Group();
+  sights.name = weapon.categoria === 'sniper' ? 'luneta-prisma' : 'mira-de-ferro';
+  const dark = material('#111820', { roughness: 0.46, metalness: 0.62 });
+  const edge = material('#313b46', { roughness: 0.4, metalness: 0.55 });
+  const accent = new THREE.MeshBasicMaterial({ color: 0x188cff, toneMapped: false });
+
+  if (weapon.categoria === 'sniper') {
+    cylinder(sights, 0.09, 0.54, [0, profile.lineY, -0.3], dark, [Math.PI / 2, 0, 0], 16);
+    const rearRing = addMesh(sights, new THREE.TorusGeometry(0.095, 0.018, 8, 18), edge, [0, profile.lineY, -0.02]);
+    const frontRing = addMesh(sights, new THREE.TorusGeometry(0.105, 0.019, 8, 18), edge, [0, profile.lineY, -0.58]);
+    rearRing.rotation.set(0, 0, 0);
+    frontRing.rotation.set(0, 0, 0);
+    box(sights, [0.035, 0.12, 0.09], [-0.065, profile.lineY - 0.105, -0.2], dark);
+    box(sights, [0.035, 0.12, 0.09], [0.065, profile.lineY - 0.105, -0.42], dark);
+    const lens = addMesh(
+      sights,
+      new THREE.CircleGeometry(0.078, 20),
+      new THREE.MeshBasicMaterial({ color: 0x224f61, transparent: true, opacity: 0.48, side: THREE.DoubleSide }),
+      [0, profile.lineY, -0.005],
+    );
+    lens.renderOrder = 23;
+  } else {
+    box(sights, [0.19, 0.035, 0.045], [0, profile.lineY - 0.055, profile.rearZ], dark);
+    box(sights, [0.038, 0.12, 0.045], [-0.077, profile.lineY - 0.005, profile.rearZ], dark);
+    box(sights, [0.038, 0.12, 0.045], [0.077, profile.lineY - 0.005, profile.rearZ], dark);
+    box(sights, [0.13, 0.035, 0.04], [0, profile.lineY - 0.055, profile.frontZ], edge);
+    box(sights, [0.024, 0.115, 0.035], [0, profile.lineY - 0.006, profile.frontZ], dark);
+    const bead = addMesh(
+      sights,
+      new THREE.SphereGeometry(0.018, 8, 6),
+      accent,
+      [0, profile.lineY + 0.048, profile.frontZ],
+    );
+    bead.renderOrder = 23;
+  }
+
+  model.add(sights);
+  model.userData.sights = sights;
+  model.userData.sightAccent = accent;
+  model.userData.adsPosition = new THREE.Vector3(0, -profile.lineY, profile.adsZ);
+  model.userData.aimFov = profile.fov;
+  model.userData.aimSensitivity = profile.sensitivity;
 }
 
 function blockBetween(group, start, end, width, depth, meshMaterial) {
@@ -348,6 +402,8 @@ export class WeaponSystem {
     this.aimHeld = false;
     this.aimBlend = 0;
     this.reloadAudioStage = 0;
+    this.enabled = true;
+    this.impactBursts = [];
     this.currentPlayer = null;
     this._lastWeaponMode = '';
 
@@ -368,6 +424,7 @@ export class WeaponSystem {
     this.scoreEl = document.getElementById('score');
     this.hitmarkerEl = document.getElementById('hitmarker');
     this.crosshairEl = document.getElementById('crosshair');
+    this.scopeOverlayEl = document.getElementById('scope-overlay');
 
     this.inkSystem?.onTeamChange((color) => this._applyTeamColor(color));
 
@@ -405,6 +462,7 @@ export class WeaponSystem {
     if (!config?.arquivo) {
       const fallback = createFallbackModel(weapon);
       addInkIndicator(fallback);
+      addWeaponSights(fallback, weapon);
       addFirstPersonArms(fallback, config);
       registerAnimatedParts(fallback);
       return fallback;
@@ -433,6 +491,7 @@ export class WeaponSystem {
       model.userData.weaponVisual = visual;
       addMuzzle(model, config.muzzle ?? [0, 0, -0.8]);
       addInkIndicator(model);
+      addWeaponSights(model, weapon);
       addFirstPersonArms(model, config);
       registerAnimatedParts(model);
       model.userData.asset = {
@@ -447,6 +506,7 @@ export class WeaponSystem {
       console.warn(`Falha ao carregar ${config.arquivo}; usando modelo reserva.`, error);
       const fallback = createFallbackModel(weapon);
       addInkIndicator(fallback);
+      addWeaponSights(fallback, weapon);
       addFirstPersonArms(fallback, config);
       registerAnimatedParts(fallback);
       fallback.userData.asset = { formato: 'procedural-fallback' };
@@ -456,7 +516,7 @@ export class WeaponSystem {
 
   _setupEvents() {
     document.addEventListener('mousedown', (event) => {
-      if (!this.isPlayerLocked()) return;
+      if (!this.enabled || !this.isPlayerLocked()) return;
       if (event.button === 2) {
         this.aimHeld = true;
         this.currentPlayer?.cancelTacticalSprint();
@@ -480,6 +540,7 @@ export class WeaponSystem {
     });
 
     document.addEventListener('keydown', (event) => {
+      if (!this.enabled) return;
       if (event.repeat && event.code === 'KeyR') return;
       if (event.code === 'KeyR') this.reload();
 
@@ -490,7 +551,7 @@ export class WeaponSystem {
     });
 
     document.addEventListener('wheel', (event) => {
-      if (!this.isPlayerLocked() || this.weapons.length === 0) return;
+      if (!this.enabled || !this.isPlayerLocked() || this.weapons.length === 0) return;
       event.preventDefault();
       const direction = event.deltaY > 0 ? 1 : -1;
       const nextIndex = (this.currentIndex + direction + this.weapons.length) % this.weapons.length;
@@ -498,6 +559,17 @@ export class WeaponSystem {
     }, { passive: false });
 
     document.addEventListener('contextmenu', (event) => event.preventDefault());
+  }
+
+  setEnabled(enabled) {
+    this.enabled = enabled;
+    this.fireHeld = false;
+    this.aimHeld = false;
+    this.root.visible = enabled;
+    if (!enabled) {
+      document.body.classList.remove('aiming', 'scoped');
+      this.currentPlayer && (this.currentPlayer.aiming = false);
+    }
   }
 
   _renderSlots() {
@@ -578,21 +650,33 @@ export class WeaponSystem {
   }
 
   update(delta, player) {
+    this._updateImpactBursts(delta);
     if (this.weapons.length === 0) return;
     this.currentPlayer = player;
     const weapon = this.weapons[this.currentIndex];
+    if (!this.enabled) {
+      player.aiming = false;
+      return;
+    }
 
     const wantsAim = this.aimHeld
       && this.reloadRemaining <= 0
       && !player.sliding
-      && !player.tacticalSprinting;
+      && !player.tacticalSprinting
+      && player.alive;
     player.aiming = wantsAim;
+    const model = this.models[this.currentIndex];
+    player.aimFov = model.userData.aimFov ?? 62;
+    player.aimSensitivityFactor = model.userData.aimSensitivity ?? 0.68;
     this.aimBlend = THREE.MathUtils.lerp(
       this.aimBlend,
       wantsAim ? 1 : 0,
       Math.min(1, delta * (wantsAim ? 13 : 17)),
     );
     document.body.classList.toggle('aiming', this.aimBlend > 0.72);
+    const scoped = weapon.categoria === 'sniper' && wantsAim && this.aimBlend > 0.86;
+    document.body.classList.toggle('scoped', scoped);
+    this.root.visible = !scoped;
 
     this.cooldown = Math.max(0, this.cooldown - delta);
     this.idleTime += delta;
@@ -633,7 +717,6 @@ export class WeaponSystem {
     }
 
     const equipEase = 1 - Math.pow(1 - this.equipProgress, 3);
-    const model = this.models[this.currentIndex];
     const parts = model.userData.animatedParts;
     if (parts?.magazine) {
       parts.magazine.object.position.copy(parts.magazine.base);
@@ -672,7 +755,11 @@ export class WeaponSystem {
 
     if (this.flashRemaining > 0) {
       this.flashRemaining -= delta;
-      if (this.flashRemaining <= 0) this.models[this.currentIndex].userData.flash.visible = false;
+      const flash = this.models[this.currentIndex].userData.flash;
+      const pulse = THREE.MathUtils.clamp(this.flashRemaining / 0.075, 0.15, 1.15);
+      flash.scale.set(pulse, pulse, pulse);
+      flash.rotation.z += delta * 31;
+      if (this.flashRemaining <= 0) flash.visible = false;
     }
 
     const moving = player.locked && player.speed > 0.6;
@@ -694,7 +781,7 @@ export class WeaponSystem {
     this.recoil = THREE.MathUtils.lerp(this.recoil, 0, Math.min(1, delta * 13));
     const sprintDrop = (tactical ? 0.14 : (sprinting ? 0.09 : (sliding ? 0.12 : 0))) * (1 - this.aimBlend);
     const equipDrop = (1 - equipEase) * 0.34;
-    const adsPosition = ADS_POSITIONS[weapon.categoria] ?? ADS_POSITIONS.pistola;
+    const adsPosition = model.userData.adsPosition ?? new THREE.Vector3(0, -0.205, -0.62);
     const baseX = THREE.MathUtils.lerp(BASE_POSITION.x, adsPosition.x, this.aimBlend);
     const baseY = THREE.MathUtils.lerp(BASE_POSITION.y, adsPosition.y, this.aimBlend);
     const baseZ = THREE.MathUtils.lerp(BASE_POSITION.z, adsPosition.z, this.aimBlend);
@@ -733,7 +820,7 @@ export class WeaponSystem {
       mode = 'CORRIDA TÁTICA';
       modeState = 'tactical';
     } else if (this.aimBlend > 0.6) {
-      mode = 'MIRA PRECISA · RMB';
+      mode = weapon.categoria === 'sniper' ? 'LUNETA 4× · RMB' : 'MIRA DE FERRO · RMB';
       modeState = 'aim';
     }
     if (mode !== this._lastWeaponMode && this.weaponModeEl) {
@@ -745,7 +832,12 @@ export class WeaponSystem {
 
   _tryFire() {
     const weapon = this.weapons[this.currentIndex];
-    if (!weapon || this.cooldown > 0 || this.reloadRemaining > 0 || !this.isPlayerLocked()) return;
+    if (!this.enabled
+      || !this.currentPlayer?.alive
+      || !weapon
+      || this.cooldown > 0
+      || this.reloadRemaining > 0
+      || !this.isPlayerLocked()) return;
 
     if (this.ammo[this.currentIndex] <= 0) {
       this.audio?.playDryFire();
@@ -762,17 +854,17 @@ export class WeaponSystem {
 
     const model = this.models[this.currentIndex];
     const inkColor = this.inkSystem?.getActiveColor();
-    if (inkColor) model.userData.flash.material.color.copy(inkColor);
     model.userData.flash.visible = true;
     model.userData.flash.rotation.z = Math.random() * Math.PI;
-    this.flashRemaining = 0.045;
+    model.userData.flash.scale.setScalar(0.75 + Math.random() * 0.35);
+    this.flashRemaining = 0.075;
     this.crosshairEl.classList.add('firing');
     clearTimeout(this.crosshairTimer);
     this.crosshairTimer = setTimeout(() => this.crosshairEl.classList.remove('firing'), 90);
 
     const pelletCount = weapon.projeteisPorTiro ?? 1;
     const damagePerPellet = weapon.dano / pelletCount;
-    let tracerEnd = null;
+    let impactPoint = null;
     let closestImpactDistance = Infinity;
 
     this.camera.getWorldPosition(this.worldOrigin);
@@ -797,14 +889,12 @@ export class WeaponSystem {
           const target = intersection.object.userData.target;
           return !target || target.active;
         });
-      const end = hit
-        ? hit.point
-        : this.hitPoint.copy(this.worldDirection).multiplyScalar(70).add(this.worldOrigin);
-      if (pellet === 0) tracerEnd = end.clone();
-
       if (hit) {
         this.inkSystem?.paint(hit, weapon.raioTinta ?? 1);
         closestImpactDistance = Math.min(closestImpactDistance, hit.distance);
+        if (!impactPoint || hit.distance < impactPoint.distance) {
+          impactPoint = { point: hit.point.clone(), distance: hit.distance };
+        }
       }
 
       if (hit?.object.userData.target) {
@@ -812,30 +902,67 @@ export class WeaponSystem {
         this._showHitmarker(result.killed);
         if (result.killed) {
           this.score++;
-          this.scoreEl.textContent = `ALVOS ${this.score}`;
+          this.scoreEl.textContent = `ABATES ${this.score}`;
         }
       }
     }
 
-    if (tracerEnd) this._createTracer(model.userData.muzzle, tracerEnd, inkColor);
+    if (impactPoint) this._createImpactBurst(impactPoint.point, inkColor, weapon.categoria === 'espingarda' ? 11 : 7);
     if (Number.isFinite(closestImpactDistance)) this.audio?.playImpact(closestImpactDistance);
     this._updateHud();
   }
 
-  _createTracer(muzzle, endPoint, color) {
-    const startPoint = muzzle.getWorldPosition(new THREE.Vector3());
-    const geometry = new THREE.BufferGeometry().setFromPoints([startPoint, endPoint]);
-    const tracer = new THREE.Line(
+  _createImpactBurst(point, color, count) {
+    const positions = new Float32Array(count * 3);
+    const velocities = new Float32Array(count * 3);
+    for (let index = 0; index < count; index++) {
+      const offset = index * 3;
+      positions[offset] = point.x;
+      positions[offset + 1] = point.y + 0.025;
+      positions[offset + 2] = point.z;
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 0.75 + Math.random() * 1.65;
+      velocities[offset] = Math.cos(angle) * speed;
+      velocities[offset + 1] = 0.55 + Math.random() * 1.6;
+      velocities[offset + 2] = Math.sin(angle) * speed;
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const burst = new THREE.Points(
       geometry,
-      new THREE.LineBasicMaterial({ color: color ?? 0xffd27a, transparent: true, opacity: 0.78 }),
+      new THREE.PointsMaterial({
+        color: color ?? 0x188cff,
+        size: 0.12,
+        transparent: true,
+        opacity: 0.95,
+        depthWrite: false,
+        sizeAttenuation: true,
+      }),
     );
-    this.scene.add(tracer);
+    burst.frustumCulled = false;
+    this.scene.add(burst);
+    this.impactBursts.push({ object: burst, velocities, age: 0, life: 0.22 });
+  }
 
-    setTimeout(() => {
-      this.scene.remove(tracer);
-      tracer.geometry.dispose();
-      tracer.material.dispose();
-    }, 45);
+  _updateImpactBursts(delta) {
+    for (let burstIndex = this.impactBursts.length - 1; burstIndex >= 0; burstIndex--) {
+      const burst = this.impactBursts[burstIndex];
+      burst.age += delta;
+      const positions = burst.object.geometry.attributes.position.array;
+      for (let index = 0; index < positions.length; index += 3) {
+        positions[index] += burst.velocities[index] * delta;
+        positions[index + 1] += burst.velocities[index + 1] * delta;
+        positions[index + 2] += burst.velocities[index + 2] * delta;
+        burst.velocities[index + 1] -= 8.5 * delta;
+      }
+      burst.object.geometry.attributes.position.needsUpdate = true;
+      burst.object.material.opacity = Math.max(0, 1 - burst.age / burst.life);
+      if (burst.age < burst.life) continue;
+      this.scene.remove(burst.object);
+      burst.object.geometry.dispose();
+      burst.object.material.dispose();
+      this.impactBursts.splice(burstIndex, 1);
+    }
   }
 
   _showHitmarker(killed) {
@@ -856,6 +983,10 @@ export class WeaponSystem {
         indicatorMaterial.emissive.copy(color);
       }
       if (model.userData.flash?.material) model.userData.flash.material.color.copy(color);
+      const flashMaterials = model.userData.flashMaterials;
+      if (flashMaterials?.[1]) flashMaterials[1].color.copy(color).offsetHSL(0, -0.08, 0.18);
+      if (flashMaterials?.[2]) flashMaterials[2].color.copy(color);
+      if (model.userData.sightAccent) model.userData.sightAccent.color.copy(color);
     }
   }
 

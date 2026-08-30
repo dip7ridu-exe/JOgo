@@ -8,7 +8,7 @@ Esta versão inclui movimento por aceleração e impulso, corrida normal e táti
 controle aéreo, slide-hop, mira ADS, recarga animada em etapas, áudio
 procedural, mapa urbano original, cinco blasters Kenney, braços em primeira
 pessoa, tiro por raycast, tinta em chão/paredes/caixas, placar de cobertura,
-alvos e HUD de arsenal.
+Bot Rosa adversário, partida com vitória/derrota e HUD de arsenal.
 
 ## Executar
 
@@ -30,14 +30,13 @@ Depois acesse `http://localhost:8000`. Para publicar no GitHub Pages, use
 | W A S D | Mover |
 | Mouse | Olhar |
 | Botão esquerdo | Atirar tinta |
-| Botão direito (segurar) | Mirar; centraliza a arma, reduz FOV/sensibilidade e melhora a precisão |
+| Botão direito (segurar) | Usar mira de ferro; no Blaster Prisma, abrir a luneta 4× |
 | 1–5 ou roda do mouse | Trocar blaster |
 | R | Reabastecer o tanque |
 | Espaço | Pular; use após o slide para manter o impulso |
 | Shift | Correr |
 | Shift duas vezes | Corrida tática temporária, mais rápida e com a arma elevada |
 | Ctrl ou C | Deslizar; na própria tinta ativa o impulso de tinta |
-| T | Alternar Time Azul/Time Rosa para testar a retomada de território |
 | M | Ativar/desativar todo o áudio |
 | Esc | Liberar o mouse |
 
@@ -55,11 +54,12 @@ tática de 3,15 segundos. Ela é mais veloz que a corrida comum, eleva a arma,
 acelera o balanço do view model e tem recuperação de 4,25 segundos. Atirar,
 recarregar ou deslizar encerra o estado para evitar que as ações se sobreponham.
 
-Segurar o botão direito ativa a mira ADS. A transição centraliza a arma, reduz
-o campo de visão para 62°, estabiliza o balanço e diminui a sensibilidade do
-mouse. Mirar interrompe a corrida tática e bloqueia a corrida comum enquanto o
-botão estiver pressionado. A dispersão cai progressivamente com a animação; o
-canhão mantém parte de seu espalhamento para preservar sua função.
+Segurar o botão direito ativa a mira ADS. Cada blaster recebeu alça, massa e
+posição ADS próprias, alinhadas pela mesma linha de visada; a arma também é
+afastada da câmera para não cobrir a tela. O Blaster Prisma tem uma luneta 3D e
+um retículo 4× em tela cheia, com FOV de 44° e sensibilidade menor. Mirar
+interrompe a corrida tática e bloqueia a corrida comum. A dispersão cai
+progressivamente; o canhão mantém parte de seu espalhamento.
 
 Agachar sobre tinta da equipe ativa libera um impulso adicional. Isso é uma
 adaptação simples da mobilidade por tinta para o protótipo FPS; ainda não há
@@ -89,15 +89,28 @@ Nenhum som do Freesound ou OpenGameArt foi copiado. Esses catálogos misturam
 CC0, CC-BY e outras licenças por arquivo; o áudio original mantém o protótipo
 leve, offline depois do carregamento e sem uma lista adicional de atribuições.
 
+### Bot e objetivo da partida
+
+Os manequins foram removidos. O Bot Rosa percorre uma rota segura pelo mesmo
+mapa, deixa uma trilha contínua, procura linha de visão e atira no jogador. Ele
+tem 100 HP, pode ser abatido e retorna depois de 2,8 segundos.
+
+A partida dura 90 segundos e vence quem cobrir 10% primeiro. Se o bot derrubar
+o jogador, 16% das células azuis já conquistadas são transferidas ao Time Rosa;
+abater o bot recupera uma pequena parte de sua área. Ao atingir a meta ou acabar
+o tempo, uma tela informa vitória ou derrota, porcentagens, abates e quedas.
+
 ### Tinta e território
 
-Cada raycast pode pintar chão, paredes e caixas. No chão, uma grade de 84×84
-células registra qual equipe cobriu cada região e alimenta o placar em tempo
-real. Pintar sobre a cor adversária transfere aquela área para a equipe ativa.
+Cada raycast pode pintar chão, paredes e caixas. No chão, os impactos escrevem
+em uma única `CanvasTexture` transparente de 256×256, funcionando como um mapa
+de pintura dinâmico. As manchas têm um núcleo e gotas satélites para formar
+bordas mais fluidas. Em paralelo, uma grade de 84×84 células registra a equipe
+de cada região e alimenta o placar sem ler pixels da GPU.
 
-As marcas visuais usam um único `THREE.InstancedMesh`, limitado a 900 instâncias
-em buffer circular. Assim, disparar por muito tempo não cria milhares de objetos
-nem aumenta indefinidamente o número de draw calls.
+Paredes e caixas continuam usando um `THREE.InstancedMesh`, agora limitado a
+520 instâncias em buffer circular. Pintar sobre a cor adversária sobrescreve a
+textura e transfere a respectiva célula de pontuação.
 
 ### Blasters e braços
 
@@ -122,8 +135,13 @@ carregar, existe um modelo procedural de reserva para a partida continuar.
 
 O HUD inferior esquerdo usa a linguagem visual pixelada dos FPS de navegador:
 avatar, nome do Time Azul ou Time Rosa, seis blocos de vida e indicador 100. A
-interface, o reservatório visível na arma, o clarão, o traçante e as manchas de
+interface, o reservatório visível na arma, o clarão e as manchas de
 tinta mudam juntos para azul (`#188cff`) ou rosa (`#ff3f9f`).
+
+O traçante em forma de raio foi removido. Cada tiro usa uma chama procedural de
+três camadas no cano e um pequeno conjunto de gotas físicas no impacto; os
+efeitos são curtos e descartados imediatamente para não deixar linhas cruzando
+o mapa.
 
 O seletor de armas agora é um painel vertical à direita, com silhuetas vetoriais
 originais, categoria, tecla, barra de munição e destaque da arma ativa. O cartão
@@ -140,8 +158,9 @@ centro da tela; em celular, a lista é ocultada e o cartão é reduzido.
 - materiais e geometrias compartilhados entre prédios;
 - grades, janelas e vegetação usando instanciamento;
 - áudio sintetizado em tempo real, sem baixar WAV/MP3;
-- manchas agrupadas em um `InstancedMesh` com limite fixo;
-- placar em `Uint8Array`, sem textura grande ou leitura de pixels da GPU;
+- tinta do chão em uma única `CanvasTexture` 256×256;
+- manchas verticais agrupadas em um `InstancedMesh` com limite fixo;
+- placar em `Uint8Array`, sem leitura de pixels da GPU;
 - resolução limitada a 1,75× o DPR e sombras em 1024×1024;
 - mapa de teste mantido pequeno, com colisores `Box3` simples;
 - dependências Three.js na mesma versão (`0.169.0`).
@@ -153,10 +172,12 @@ JOgo/
 ├── index.html       # canvas, tela inicial e HUD de território
 ├── style.css        # interface responsiva
 ├── main.js          # cena e loop principal
-├── map.js           # arena urbana, colisões, instâncias e alvos
-├── player.js        # Pointer Lock, corrida tática, slide e slide-hop
+├── map.js           # arena urbana, colisões, instâncias e rota do bot
+├── player.js        # movimento, vida, dano, respawn e ADS
+├── bot.js           # bot pintor, patrulha, linha de visão e combate
+├── match.js         # meta de território, tempo, penalidades e resultado
 ├── audio.js         # passos, tiros, impactos e recarga procedurais
-├── ink.js           # marcas instanciadas e cobertura de território
+├── ink.js           # paint-map, marcas verticais e cobertura de território
 ├── weapons.js       # GLTFLoader, braços, tiro, tinta, dano e recarga
 ├── weapons.json     # atributos e ajustes dos cinco blasters
 └── models/weapons/  # cinco GLBs Kenney e LICENSES.md
@@ -194,6 +215,12 @@ JOgo/
   referência visual para as poses de POV, mira e recarga. O modelo AK74U não foi
   incorporado: o jogo mantém os braços procedurais originais e os cinco blasters
   CC0 já documentados em `models/weapons/LICENSES.md`.
+- O [Splatoon-Ink do Mix and Jam](https://github.com/mixandjam/Splatoon-Ink)
+  orientou a separação entre disparo, gerenciador de pintura e superfície
+  pintável. A implementação Unity/URP não foi copiada; o navegador usa
+  `CanvasTexture`, grade compacta e materiais do Three.js.
+- A [animação de chama indicada no Sketchfab](https://sketchfab.com/3d-models/animation-of-fire-shoot-flame-vfx-40af8e4b4f9f477da34ebe3cf1885039)
+  foi referência de forma e duração. O efeito incluído é procedural e original.
 - [Awwwards — Three.js](https://www.awwwards.com/websites/three-js/) serve como
   referência visual de interface e apresentação, não de física.
 - O repositório [PunishXIV/Splatoon](https://github.com/PunishXIV/Splatoon) é um
@@ -201,8 +228,8 @@ JOgo/
   jogo da Nintendo.
 - A regra central de território segue a descrição oficial de
   [Turf War](https://splatoon.nintendo.com/en/gameplay/): vence a equipe que
-  cobre mais chão com sua tinta. Nesta versão, o `T` simula as duas equipes
-  localmente.
+  cobre mais chão com sua tinta. Nesta versão, o Bot Rosa controla a segunda
+  equipe localmente.
 - Modelos: [Kenney — Blaster Kit](https://kenney.nl/assets/blaster-kit), CC0.
 
 O projeto usa apenas a ideia geral de FPS de arena e disputa por território.
@@ -211,9 +238,9 @@ Krunker ou Splatoon.
 
 ## Próximas etapas
 
-1. Adicionar bots que pintem o mapa para a equipe adversária.
-2. Criar rodada de três minutos com tela de resultado.
-3. Adicionar partículas de tinta e variação de superfície nos passos.
-4. Implementar animações corporais licenciadas quando houver bots/jogadores.
+1. Adicionar navegação em malha para o bot escolher rotas dinamicamente.
+2. Criar diferentes níveis de dificuldade e armas para o bot.
+3. Adicionar variação de superfície nos passos.
+4. Implementar animações corporais licenciadas para o bot.
 5. Implementar servidor autoritativo, interpolação e validação de acertos antes
    de ativar multiplayer público.
