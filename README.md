@@ -4,9 +4,10 @@ Protótipo de jogo de tiro em primeira pessoa para navegador, feito com
 **Three.js** e sem etapa de build. A proposta mistura a velocidade de um FPS de
 arena com uma disputa de território pintado por duas equipes.
 
-Esta versão inclui movimento por aceleração e impulso, corrida, controle aéreo,
-slide-hop, colisões, cinco blasters Kenney, braços em primeira pessoa, animações,
-tiro por raycast, tinta em chão/paredes/caixas, placar de cobertura, alvos e HUD.
+Esta versão inclui movimento por aceleração e impulso, corrida normal e tática,
+controle aéreo, slide-hop, áudio procedural, mapa urbano original, cinco
+blasters Kenney, braços em primeira pessoa, tiro por raycast, tinta em
+chão/paredes/caixas, placar de cobertura, alvos e HUD.
 
 ## Executar
 
@@ -32,8 +33,10 @@ Depois acesse `http://localhost:8000`. Para publicar no GitHub Pages, use
 | R | Reabastecer o tanque |
 | Espaço | Pular; use após o slide para manter o impulso |
 | Shift | Correr |
+| Shift duas vezes | Corrida tática temporária, mais rápida e com a arma elevada |
 | Ctrl ou C | Deslizar; na própria tinta ativa o impulso de tinta |
 | T | Alternar Time Azul/Time Rosa para testar a retomada de território |
+| M | Ativar/desativar todo o áudio |
 | Esc | Liberar o mouse |
 
 ## Mecânicas implementadas
@@ -45,9 +48,38 @@ jogador acelera até a velocidade desejada, perde velocidade por atrito no chão
 mantém parte do controle no ar e conserva o impulso ao pular durante um slide.
 O campo de visão e a inclinação da câmera reagem à velocidade.
 
+Dois toques rápidos em `Shift`, enquanto o jogador avança, ativam uma corrida
+tática de 3,15 segundos. Ela é mais veloz que a corrida comum, eleva a arma,
+acelera o balanço do view model e tem recuperação de 4,25 segundos. Atirar,
+recarregar ou deslizar encerra o estado para evitar que as ações se sobreponham.
+
 Agachar sobre tinta da equipe ativa libera um impulso adicional. Isso é uma
 adaptação simples da mobilidade por tinta para o protótipo FPS; ainda não há
 transformação de personagem nem multiplayer.
+
+### Mapa urbano
+
+A arena antiga de caixas foi substituída por um mapa original construído a
+partir da leitura visual do anexo: quatro conjuntos de prédios, praça central,
+corredores circulares, muros baixos, coberturas, grades e jardineiras. Não é uma
+cópia de um mapa comercial.
+
+O mapa não baixa texturas 4K. O piso usa uma textura de tijolos 64×64 criada no
+próprio navegador; janelas, vegetação e barras de grade são agrupadas em três
+`InstancedMesh`. Prédios compartilham materiais e geometrias, e cada trecho de
+grade usa apenas um colisor simples.
+
+### Áudio procedural
+
+`audio.js` usa um único `AudioContext`, osciladores, filtros e um pequeno buffer
+de ruído gerado no carregamento. Há variações para passos de caminhada, corrida
+e corrida tática, aterrissagem, tiro por categoria de arma, impacto, recarga e
+carregador vazio. O contexto só é liberado depois do primeiro clique/tecla,
+seguindo a política de autoplay dos navegadores.
+
+Nenhum som do Freesound ou OpenGameArt foi copiado. Esses catálogos misturam
+CC0, CC-BY e outras licenças por arquivo; o áudio original mantém o protótipo
+leve, offline depois do carregamento e sem uma lista adicional de atribuições.
 
 ### Tinta e território
 
@@ -88,6 +120,12 @@ tinta mudam juntos para azul (`#188cff`) ou rosa (`#ff3f9f`).
 
 - sem bundler, servidor ou framework obrigatório;
 - cinco GLBs pequenos e autocontidos;
+- resolução inicial limitada a 1,5× no desktop e 1,2× em telas menores, com
+  ajuste automático quando o FPS permanece baixo;
+- mapa estático com sombras calculadas uma vez;
+- materiais e geometrias compartilhados entre prédios;
+- grades, janelas e vegetação usando instanciamento;
+- áudio sintetizado em tempo real, sem baixar WAV/MP3;
 - manchas agrupadas em um `InstancedMesh` com limite fixo;
 - placar em `Uint8Array`, sem textura grande ou leitura de pixels da GPU;
 - resolução limitada a 1,75× o DPR e sombras em 1024×1024;
@@ -101,8 +139,9 @@ JOgo/
 ├── index.html       # canvas, tela inicial e HUD de território
 ├── style.css        # interface responsiva
 ├── main.js          # cena e loop principal
-├── map.js           # arena, colisões, superfícies pintáveis e alvos
-├── player.js        # Pointer Lock, aceleração, slide e slide-hop
+├── map.js           # arena urbana, colisões, instâncias e alvos
+├── player.js        # Pointer Lock, corrida tática, slide e slide-hop
+├── audio.js         # passos, tiros, impactos e recarga procedurais
 ├── ink.js           # marcas instanciadas e cobertura de território
 ├── weapons.js       # GLTFLoader, braços, tiro, tinta, dano e recarga
 ├── weapons.json     # atributos e ajustes dos cinco blasters
@@ -122,6 +161,24 @@ JOgo/
 - Os [exemplos oficiais do Three.js](https://threejs.org/examples/) e a
   documentação de `Raycaster`/`InstancedMesh` orientam colisões de disparo e a
   renderização eficiente das marcas.
+- A documentação oficial de
+  [`InstancedMesh`](https://threejs.org/docs/pages/InstancedMesh.html) confirma
+  seu uso para reduzir draw calls com geometrias repetidas.
+- As práticas da [Web Audio API no MDN](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Best_practices)
+  orientam a criação/reabertura do contexto após uma ação do usuário.
+- [Freesound](https://freesound.org/help/faq/) e
+  [OpenGameArt](https://opengameart.org/content/faq) foram avaliados como
+  catálogos futuros; cada download ainda precisa ter licença e crédito
+  verificados individualmente.
+- [Poly Haven](https://polyhaven.com/license) oferece assets CC0, mas a versão
+  atual usa uma textura procedural menor para não aumentar o download.
+- [Mixamo](https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html) e
+  [ActorCore](https://actorcore.reallusion.com/license) são opções para uma
+  futura animação corporal completa. Nenhum arquivo desses serviços foi
+  redistribuído nesta versão.
+- Os modelos de braços/armas indicados no Sketchfab foram usados apenas como
+  referência visual. O jogo mantém os braços procedurais originais e os cinco
+  blasters CC0 já documentados em `models/weapons/LICENSES.md`.
 - [Awwwards — Three.js](https://www.awwwards.com/websites/three-js/) serve como
   referência visual de interface e apresentação, não de física.
 - O repositório [PunishXIV/Splatoon](https://github.com/PunishXIV/Splatoon) é um
@@ -141,6 +198,7 @@ Krunker ou Splatoon.
 
 1. Adicionar bots que pintem o mapa para a equipe adversária.
 2. Criar rodada de três minutos com tela de resultado.
-3. Adicionar áudio CC0 e partículas de tinta.
-4. Implementar servidor autoritativo, interpolação e validação de acertos antes
+3. Adicionar partículas de tinta e variação de superfície nos passos.
+4. Implementar animações corporais licenciadas quando houver bots/jogadores.
+5. Implementar servidor autoritativo, interpolação e validação de acertos antes
    de ativar multiplayer público.

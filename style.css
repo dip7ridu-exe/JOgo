@@ -115,7 +115,8 @@ canvas {
 
 #fps,
 #score,
-#movement-status {
+#movement-status,
+#audio-status {
   min-width: 84px;
   padding: 8px 10px;
   border: 3px solid #626262;
@@ -135,6 +136,13 @@ canvas {
   min-width: 126px;
   color: var(--team);
 }
+
+#audio-status {
+  min-width: 138px;
+  color: #a6f0c6;
+}
+
+#audio-status.muted { color: #ff8e86; }
 
 #territory-hud {
   position: fixed;
@@ -549,6 +557,8 @@ kbd {
   }
 
   #movement-status { display: none; }
+
+  #audio-status { display: none; }
 
   #team-hud {
     left: 8px;

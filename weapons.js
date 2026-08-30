@@ -264,7 +264,7 @@ function createFallbackModel(definition) {
 }
 
 export class WeaponSystem {
-  constructor(camera, scene, shootables, inkSystem, isPlayerLocked) {
+  constructor(camera, scene, shootables, inkSystem, isPlayerLocked, audio = null) {
     // Mantém compatibilidade com a assinatura anterior nos testes/embeds.
     if (typeof inkSystem === 'function') {
       isPlayerLocked = inkSystem;
@@ -275,6 +275,7 @@ export class WeaponSystem {
     this.shootables = shootables;
     this.inkSystem = inkSystem;
     this.isPlayerLocked = isPlayerLocked;
+    this.audio = audio;
     this.loader = new GLTFLoader();
 
     this.root = new THREE.Group();
@@ -297,6 +298,8 @@ export class WeaponSystem {
     this.idleTime = 0;
     this.score = 0;
     this.flashRemaining = 0;
+    this.tacticalBlend = 0;
+    this.currentPlayer = null;
 
     this.raycaster = new THREE.Raycaster();
     this.raycaster.far = 120;
@@ -489,14 +492,17 @@ export class WeaponSystem {
     if (!weapon || this.reloadRemaining > 0) return;
     if (this.ammo[this.currentIndex] >= weapon.capacidadeCarregador) return;
 
+    this.currentPlayer?.cancelTacticalSprint();
     this.fireHeld = false;
     this.reloadRemaining = weapon.tempoRecarga;
     this.reloadDuration = weapon.tempoRecarga;
     this.reloadEl.textContent = `REABASTECENDO TINTA ${this.reloadRemaining.toFixed(1)}s`;
+    this.audio?.playReload();
   }
 
   update(delta, player) {
     if (this.weapons.length === 0) return;
+    this.currentPlayer = player;
 
     this.cooldown = Math.max(0, this.cooldown - delta);
     this.idleTime += delta;
@@ -562,36 +568,39 @@ export class WeaponSystem {
     }
 
     const moving = player.locked && player.speed > 0.6;
+    const tactical = moving && player.tacticalSprinting;
     const sprinting = moving && player.sprinting;
     const sliding = moving && player.sliding;
-    this.bobTime += delta * (sprinting ? 13 : 8);
-    const bobStrength = moving && player.onGround && !sliding ? (sprinting ? 0.018 : 0.009) : 0;
+    this.tacticalBlend = THREE.MathUtils.lerp(this.tacticalBlend, tactical ? 1 : 0, Math.min(1, delta * (tactical ? 10 : 14)));
+    this.bobTime += delta * (tactical ? 15.5 : (sprinting ? 13 : 8));
+    const bobStrength = moving && player.onGround && !sliding ? (tactical ? 0.027 : (sprinting ? 0.018 : 0.009)) : 0;
     const bobX = Math.cos(this.bobTime) * bobStrength;
     const bobY = Math.abs(Math.sin(this.bobTime)) * bobStrength;
     const breatheY = Math.sin(this.idleTime * 1.7) * 0.0035;
+    const tacticalSway = Math.sin(this.bobTime * 0.5) * 0.035 * this.tacticalBlend;
 
     this.recoil = THREE.MathUtils.lerp(this.recoil, 0, Math.min(1, delta * 13));
-    const sprintDrop = sprinting ? 0.09 : (sliding ? 0.12 : 0);
+    const sprintDrop = tactical ? 0.14 : (sprinting ? 0.09 : (sliding ? 0.12 : 0));
     const equipDrop = (1 - equipEase) * 0.34;
-    const targetX = BASE_POSITION.x + bobX + reloadArc * 0.055;
+    const targetX = BASE_POSITION.x + bobX + reloadArc * 0.055 - this.tacticalBlend * 0.11;
     const targetY = BASE_POSITION.y - bobY - sprintDrop + breatheY - equipDrop - reloadArc * 0.09;
-    const targetZ = BASE_POSITION.z + this.recoil + (sprinting ? 0.04 : 0);
+    const targetZ = BASE_POSITION.z + this.recoil + (sprinting ? 0.04 : 0) + this.tacticalBlend * 0.08;
     this.root.position.x = THREE.MathUtils.lerp(this.root.position.x, targetX, Math.min(1, delta * 14));
     this.root.position.y = THREE.MathUtils.lerp(this.root.position.y, targetY, Math.min(1, delta * 14));
     this.root.position.z = THREE.MathUtils.lerp(this.root.position.z, targetZ, Math.min(1, delta * 18));
     this.root.rotation.x = THREE.MathUtils.lerp(
       this.root.rotation.x,
-      BASE_ROTATION.x - this.recoil * 0.42 + reloadArc * 0.16,
+      BASE_ROTATION.x - this.recoil * 0.42 + reloadArc * 0.16 + this.tacticalBlend * 1.02,
       Math.min(1, delta * 18),
     );
     this.root.rotation.y = THREE.MathUtils.lerp(
       this.root.rotation.y,
-      BASE_ROTATION.y + (1 - equipEase) * 0.48 + reloadArc * 0.12,
+      BASE_ROTATION.y + (1 - equipEase) * 0.48 + reloadArc * 0.12 + tacticalSway,
       Math.min(1, delta * 15),
     );
     this.root.rotation.z = THREE.MathUtils.lerp(
       this.root.rotation.z,
-      BASE_ROTATION.z + bobX * 0.8 - (1 - equipEase) * 0.38 - reloadArc * 0.28,
+      BASE_ROTATION.z + bobX * 0.8 - (1 - equipEase) * 0.38 - reloadArc * 0.28 - this.tacticalBlend * 0.2,
       Math.min(1, delta * 12),
     );
   }
@@ -601,14 +610,17 @@ export class WeaponSystem {
     if (!weapon || this.cooldown > 0 || this.reloadRemaining > 0 || !this.isPlayerLocked()) return;
 
     if (this.ammo[this.currentIndex] <= 0) {
+      this.audio?.playDryFire();
       this.reload();
       return;
     }
 
+    this.currentPlayer?.cancelTacticalSprint();
     this.ammo[this.currentIndex]--;
     this.cooldown = 1 / weapon.cadenciaTiro;
     this.recoil = Math.min(0.24, this.recoil + (weapon.recuo ?? 0.07));
     this.fireAnimation = 1;
+    this.audio?.playGunshot(weapon);
 
     const model = this.models[this.currentIndex];
     const inkColor = this.inkSystem?.getActiveColor();
@@ -623,6 +635,7 @@ export class WeaponSystem {
     const pelletCount = weapon.projeteisPorTiro ?? 1;
     const damagePerPellet = weapon.dano / pelletCount;
     let tracerEnd = null;
+    let closestImpactDistance = Infinity;
 
     this.camera.getWorldPosition(this.worldOrigin);
     this.raycaster.setFromCamera(CENTER, this.camera);
@@ -649,7 +662,10 @@ export class WeaponSystem {
         : this.hitPoint.copy(this.worldDirection).multiplyScalar(70).add(this.worldOrigin);
       if (pellet === 0) tracerEnd = end.clone();
 
-      if (hit) this.inkSystem?.paint(hit, weapon.raioTinta ?? 1);
+      if (hit) {
+        this.inkSystem?.paint(hit, weapon.raioTinta ?? 1);
+        closestImpactDistance = Math.min(closestImpactDistance, hit.distance);
+      }
 
       if (hit?.object.userData.target) {
         const result = hit.object.userData.target.takeDamage(damagePerPellet, hit.object.userData.hitZone);
@@ -662,6 +678,7 @@ export class WeaponSystem {
     }
 
     if (tracerEnd) this._createTracer(model.userData.muzzle, tracerEnd, inkColor);
+    if (Number.isFinite(closestImpactDistance)) this.audio?.playImpact(closestImpactDistance);
     this._updateHud();
   }
 

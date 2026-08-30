@@ -8,6 +8,7 @@ const PLAYER_RADIUS = 0.4;
 
 const WALK_SPEED = 7;
 const SPRINT_SPEED = 11;
+const TACTICAL_SPRINT_SPEED = 14.2;
 const OWN_INK_SPEED = 13.2;
 const MAX_MOMENTUM = 17;
 const GROUND_ACCELERATION = 10;
@@ -17,6 +18,9 @@ const SLIDE_FRICTION = 2.15;
 const SLIDE_IMPULSE = 12.5;
 const SLIDE_DURATION = 0.72;
 const JUMP_SPEED = 8.8;
+const TACTICAL_SPRINT_DURATION = 3.15;
+const TACTICAL_SPRINT_RECOVERY = 4.25;
+const TACTICAL_DOUBLE_TAP_MS = 330;
 
 const BASE_FOV = 75;
 const FAST_FOV = 84;
@@ -27,27 +31,36 @@ const MOUSE_SENSITIVITY = 0.0022;
  * A velocidade horizontal é persistente: saltar durante o slide mantém o impulso.
  */
 export class PlayerController {
-  constructor(camera, domElement, obstacles, isOwnInkAt = null) {
+  constructor(camera, domElement, obstacles, isOwnInkAt = null, audio = null, spawnPosition = null) {
     this.camera = camera;
     this.domElement = domElement;
     this.obstacles = obstacles;
     this.isOwnInkAt = isOwnInkAt;
+    this.audio = audio;
 
     this.yawObject = new THREE.Object3D();
     this.pitchObject = new THREE.Object3D();
     this.pitchObject.add(camera);
     this.yawObject.add(this.pitchObject);
-    this.yawObject.position.set(0, EYE_HEIGHT, 10);
+    this.yawObject.position.copy(spawnPosition ?? new THREE.Vector3(0, EYE_HEIGHT, 27));
+    this.yawObject.position.y = EYE_HEIGHT;
 
     this.velocity = new THREE.Vector3();
     this.onGround = true;
     this.currentHeight = EYE_HEIGHT;
     this.sprinting = false;
+    this.tacticalSprinting = false;
+    this.tacticalRemaining = 0;
+    this.tacticalCooldown = 0;
+    this.tacticalRequested = false;
+    this.lastShiftTap = -Infinity;
     this.sliding = false;
     this.inkBoost = false;
     this.speed = 0;
     this.slideTimer = 0;
     this.wasCrouching = false;
+    this.wasOnGround = true;
+    this.footstepTimer = 0;
 
     this.keys = {};
     this.locked = false;
@@ -111,6 +124,11 @@ export class PlayerController {
 
     document.addEventListener('keydown', (event) => {
       this.keys[event.code] = true;
+      if ((event.code === 'ShiftLeft' || event.code === 'ShiftRight') && !event.repeat) {
+        const now = performance.now();
+        if (now - this.lastShiftTap <= TACTICAL_DOUBLE_TAP_MS) this.tacticalRequested = true;
+        this.lastShiftTap = now;
+      }
       if (['Space', 'ControlLeft', 'ControlRight'].includes(event.code)) event.preventDefault();
     });
     document.addEventListener('keyup', (event) => { this.keys[event.code] = false; });
@@ -145,7 +163,27 @@ export class PlayerController {
     this.inkBoost = Boolean(crouching && this.isOwnInkAt?.(this.yawObject.position.x, this.yawObject.position.z));
     this.sprinting = wantsSprint && inputZ > 0 && !crouching;
 
+    this.tacticalCooldown = Math.max(0, this.tacticalCooldown - delta);
+    const canTacticalSprint = this.sprinting && !this.sliding && this.onGround;
+    if (this.tacticalRequested) {
+      if (canTacticalSprint && this.tacticalCooldown <= 0) {
+        this.tacticalRemaining = TACTICAL_SPRINT_DURATION;
+      }
+      this.tacticalRequested = false;
+    }
+    this.tacticalSprinting = canTacticalSprint && this.tacticalRemaining > 0;
+    if (this.tacticalSprinting) {
+      this.tacticalRemaining = Math.max(0, this.tacticalRemaining - delta);
+      if (this.tacticalRemaining <= 0) {
+        this.tacticalSprinting = false;
+        this.tacticalCooldown = TACTICAL_SPRINT_RECOVERY;
+      }
+    } else if (this.tacticalRemaining > 0 && (!wantsSprint || inputZ <= 0 || crouching)) {
+      this.cancelTacticalSprint();
+    }
+
     if (crouchPressed && this.onGround && this.speed >= WALK_SPEED * 0.82) {
+      this.cancelTacticalSprint();
       this.sliding = true;
       this.slideTimer = SLIDE_DURATION;
       const slideDirection = this.speed > 0.1
@@ -172,6 +210,7 @@ export class PlayerController {
     }
 
     let targetSpeed = this.sprinting ? SPRINT_SPEED : WALK_SPEED;
+    if (this.tacticalSprinting) targetSpeed = TACTICAL_SPRINT_SPEED;
     if (this.inkBoost) targetSpeed = OWN_INK_SPEED;
     if (this.sliding) targetSpeed = Math.max(targetSpeed, SLIDE_IMPULSE);
 
@@ -202,6 +241,8 @@ export class PlayerController {
       this.onGround = true;
     }
 
+    if (!this.wasOnGround && this.onGround) this.audio?.playLanding(Math.min(1.25, 0.65 + this.speed * 0.035));
+
     this.speed = Math.hypot(this.velocity.x, this.velocity.z);
     const speedRatio = THREE.MathUtils.clamp((this.speed - WALK_SPEED) / (MAX_MOMENTUM - WALK_SPEED), 0, 1);
     const targetFov = THREE.MathUtils.lerp(BASE_FOV, FAST_FOV, speedRatio);
@@ -211,8 +252,31 @@ export class PlayerController {
     const lean = this.sliding ? -inputX * 0.07 : -inputX * Math.min(0.035, this.speed * 0.003);
     this.pitchObject.rotation.z = THREE.MathUtils.lerp(this.pitchObject.rotation.z, lean, Math.min(1, 10 * delta));
 
+    this._updateFootsteps(delta);
     this._updateMovementHud();
     this.wasCrouching = crouching;
+    this.wasOnGround = this.onGround;
+  }
+
+  cancelTacticalSprint() {
+    if (this.tacticalRemaining <= 0 && !this.tacticalSprinting) return;
+    this.tacticalRemaining = 0;
+    this.tacticalSprinting = false;
+    this.tacticalCooldown = Math.max(this.tacticalCooldown, TACTICAL_SPRINT_RECOVERY);
+  }
+
+  _updateFootsteps(delta) {
+    const movingOnGround = this.onGround && this.speed > 1.4 && !this.sliding;
+    if (!movingOnGround) {
+      this.footstepTimer = 0;
+      return;
+    }
+
+    const interval = this.tacticalSprinting ? 0.235 : (this.sprinting ? 0.285 : 0.41);
+    this.footstepTimer += delta;
+    if (this.footstepTimer < interval) return;
+    this.footstepTimer %= interval;
+    this.audio?.playFootstep({ speed: this.speed, tactical: this.tacticalSprinting });
   }
 
   _accelerate(direction, targetSpeed, acceleration, delta) {
@@ -240,6 +304,7 @@ export class PlayerController {
     if (!this.onGround && this.speed > SPRINT_SPEED) label = `SLIDE-HOP · ${label}`;
     else if (this.sliding) label = `SLIDE · ${label}`;
     else if (this.inkBoost) label = `IMPULSO NA TINTA · ${label}`;
+    else if (this.tacticalSprinting) label = `CORRIDA TÁTICA ${this.tacticalRemaining.toFixed(1)}s · ${label}`;
     else if (this.sprinting) label = `CORRIDA · ${label}`;
     if (label !== this._lastMovementLabel) {
       this.movementEl.textContent = label;
