@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mapa de Teste — FPS</title>
+  <link rel="stylesheet" href="style.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js"
+    }
+  }
+  </script>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="crosshair"></div>
+  <div id="fps">0 FPS</div>
+
+  <div id="overlay">
+    <div id="overlay-box">
+      <h1>Mapa de Teste</h1>
+      <p>Clique em qualquer lugar para travar o mouse e jogar</p>
+      <ul>
+        <li><b>W A S D</b> — mover</li>
+        <li><b>Mouse</b> — olhar em volta</li>
+        <li><b>Espaço</b> — pular</li>
+        <li><b>Shift</b> — correr</li>
+        <li><b>Ctrl</b> — agachar</li>
+        <li><b>Esc</b> — soltar o mouse</li>
+      </ul>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

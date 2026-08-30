@@ -1,0 +1,69 @@
+{
+  "_sobre": "Base de dados inicial de armas, com nomes originais (não copiados de nenhum jogo). Ainda não está conectada ao jogo — é o ponto de partida para quando os modelos 3D forem importados. 'modeloSugerido' aponta para pacotes gratuitos (CC0) com modelos parecidos.",
+  "armas": [
+    {
+      "id": "pistola_pt9",
+      "nome": "PT-9",
+      "categoria": "pistola",
+      "dano": 26,
+      "cadenciaTiro": 7.5,
+      "capacidadeCarregador": 12,
+      "tempoRecarga": 1.4,
+      "velocidadeBala": 900,
+      "modeloSugerido": "Kenney - Blaster Kit / Quaternius - 50+ LowPoly Guns"
+    },
+    {
+      "id": "smg_vk5",
+      "nome": "VK-5",
+      "categoria": "submetralhadora",
+      "dano": 18,
+      "cadenciaTiro": 13,
+      "capacidadeCarregador": 30,
+      "tempoRecarga": 1.9,
+      "velocidadeBala": 800,
+      "modeloSugerido": "Quaternius - 50+ LowPoly Guns"
+    },
+    {
+      "id": "rifle_ar7",
+      "nome": "AR-7",
+      "categoria": "rifle_de_assalto",
+      "dano": 32,
+      "cadenciaTiro": 10,
+      "capacidadeCarregador": 30,
+      "tempoRecarga": 2.2,
+      "velocidadeBala": 950,
+      "modeloSugerido": "itch.io CC0 - 'Free Low Poly Weapons Pack Vol.3' (Delthor Games)"
+    },
+    {
+      "id": "shotgun_sg2",
+      "nome": "SG-2",
+      "categoria": "espingarda",
+      "dano": 90,
+      "cadenciaTiro": 1.1,
+      "capacidadeCarregador": 6,
+      "tempoRecarga": 2.8,
+      "velocidadeBala": 700,
+      "modeloSugerido": "itch.io CC0 - 'CC0 Flat Guns West' (Pichuliru)"
+    },
+    {
+      "id": "sniper_rk1",
+      "nome": "RK-1",
+      "categoria": "sniper",
+      "dano": 120,
+      "cadenciaTiro": 0.9,
+      "capacidadeCarregador": 5,
+      "tempoRecarga": 3.0,
+      "velocidadeBala": 1400,
+      "modeloSugerido": "itch.io CC0 - 'Sniper Set' (vkss)"
+    },
+    {
+      "id": "faca_padrao",
+      "nome": "Faca",
+      "categoria": "corpo_a_corpo",
+      "dano": 55,
+      "cadenciaTiro": 2.0,
+      "alcance": 1.6,
+      "modeloSugerido": "itch.io CC0 - 'Low Poly Simple Melee Weapon Pack' (Joe345)"
+    }
+  ]
+}
